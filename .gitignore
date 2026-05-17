@@ -1,0 +1,70 @@
+# ☿ FREDDY Hg — Gitignore
+# Credenciales y secretos — NUNCA al repositorio
+.env
+.env.local
+.env.*.local
+secrets/
+*.json.key
+*-service-account.json
+*-key.json
+gee-service-account.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.py.class
+.venv/
+venv/
+env/
+.python-version
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# Node / Frontend
+node_modules/
+dist/
+.vite/
+*.local
+.next/
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# IDE
+.vscode/
+*.code-workspace
+.idea/
+.cursor/
+
+# GEE outputs
+*.tif
+*.geotiff
+*.tiff
+
+# Logs
+*.log
+logs/
+backend/logs/
+
+# Railway / Vercel
+.vercel/
+.railway/
+
+# Test outputs (sandbox local solamente — no incluir resultados de pruebas en git)
+06_pruebas/test_logs/*.json
+06_pruebas/sample_alerts/*.json
+06_pruebas/screenshots/*.png
+06_pruebas/screenshots/*.jpg
+!06_pruebas/**/README.md
+!06_pruebas/**/.gitkeep

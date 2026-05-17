@@ -1,0 +1,10 @@
+{
+  "scene_id": "COPERNICUS/S1_GRD/S1A_IW_GRDH_1SDV_20260510T101501_20260510T101526_054321_069B3F_ABCD",
+  "scene_date_utc": "2026-05-10T10:15:01Z",
+  "centroid_lat": -1.234567,
+  "centroid_lon": -72.345678,
+  "backscatter_vv": -8.5,
+  "area_m2": 300.0,
+  "pixel_count": 3,
+  "is_new_activity": true
+}

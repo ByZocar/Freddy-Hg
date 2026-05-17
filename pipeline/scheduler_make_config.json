@@ -1,0 +1,37 @@
+{
+  "scenario_name": "Freddy_Hg_GEE_Pipeline",
+  "description": "Trigger del pipeline SAR cada 6 dias (ciclo Sentinel-1).",
+  "trigger": {
+    "type": "schedule",
+    "interval_days": 6,
+    "time_utc": "02:00"
+  },
+  "steps": [
+    {
+      "step": 1,
+      "module": "http.makeRequest",
+      "url": "{{BACKEND_URL}}/api/run-pipeline",
+      "method": "POST",
+      "headers": {"Authorization": "Bearer {{SECRET_KEY}}"},
+      "timeout_seconds": 1800
+    },
+    {
+      "step": 2,
+      "module": "http.makeRequest",
+      "url": "{{BACKEND_URL}}/health",
+      "method": "GET"
+    },
+    {
+      "step": 3,
+      "module": "email.send",
+      "to": "team@freddyhg.org",
+      "subject": "Freddy Hg pipeline ejecutado — {{1.body.exit_code}}",
+      "body": "stdout (tail):\n{{1.body.stdout_tail}}\n\nstderr (tail):\n{{1.body.stderr_tail}}"
+    }
+  ],
+  "notes": [
+    "Variables BACKEND_URL y SECRET_KEY se configuran en Make.com → Settings → Variables.",
+    "El paso 1 ejecuta el pipeline en el backend (sub-proceso).",
+    "Si el backend devuelve 401, revisar que SECRET_KEY coincida con el .env del backend."
+  ]
+}
