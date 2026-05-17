@@ -92,7 +92,51 @@ function AccountTab({
     (user?.user_metadata?.role as string | undefined) ?? '',
   );
 
-  const has2FA = Boolean(user?.factors && user.factors.length > 0);
+  // TOTP enrollment state
+  const [enrolling, setEnrolling] = useState(false);
+  const [qrUri, setQrUri] = useState<string | null>(null);
+  const [factorId, setFactorId] = useState<string | null>(null);
+  const [totpCode, setTotpCode] = useState('');
+  const [verifying, setVerifying] = useState(false);
+  const [enrolled, setEnrolled] = useState(false);
+
+  const has2FA = Boolean(user?.factors && user.factors.length > 0) || enrolled;
+
+  const startEnrollment = async () => {
+    setEnrolling(true);
+    try {
+      const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
+      if (error || !data) throw error ?? new Error('Sin respuesta de Supabase MFA');
+      setQrUri(data.totp.qr_code);
+      setFactorId(data.id);
+    } catch (e) {
+      toast.error((e as Error).message);
+      setEnrolling(false);
+    }
+  };
+
+  const verifyEnrollment = async () => {
+    if (!factorId || totpCode.length !== 6) return;
+    setVerifying(true);
+    try {
+      const challenge = await supabase.auth.mfa.challenge({ factorId });
+      if (challenge.error) throw challenge.error;
+      const { error } = await supabase.auth.mfa.verify({
+        factorId,
+        challengeId: challenge.data.id,
+        code: totpCode,
+      });
+      if (error) throw error;
+      setEnrolled(true);
+      setQrUri(null);
+      setEnrolling(false);
+      toast.success('2FA activado correctamente');
+    } catch (e) {
+      toast.error('Código incorrecto. Verifica en tu app autenticadora.');
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   const save = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -149,14 +193,59 @@ function AccountTab({
             {has2FA ? 'Activo' : 'Inactivo'}
           </Badge>
         </div>
-        <hr className="card__divider" />
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          {has2FA ? (
-            <Button variant="ghost">Regenerar código</Button>
-          ) : (
-            <Button variant="primary">Activar 2FA</Button>
-          )}
-        </div>
+
+        {/* QR de enrollment */}
+        {qrUri && (
+          <>
+            <hr className="card__divider" />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-4)' }}>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-small)', color: 'var(--text-secondary)', textAlign: 'center' }}>
+                Escanea este código con <strong>Google Authenticator</strong> o <strong>Authy</strong>
+              </div>
+              {/* El QR viene como data URI SVG desde Supabase */}
+              <div style={{ background: '#F2EDD8', borderRadius: 8, padding: 16, display: 'inline-block' }}>
+                <img src={qrUri} alt="Código QR para 2FA" width={180} height={180} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', width: '100%', maxWidth: 240 }}>
+                <label className="field__label">Código de 6 dígitos de la app</label>
+                <input
+                  className="input input--mono"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="000000"
+                  value={totpCode}
+                  onChange={e => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  style={{ textAlign: 'center', fontSize: 24, letterSpacing: '0.3em' }}
+                />
+                <Button
+                  variant="primary"
+                  block
+                  loading={verifying}
+                  onClick={verifyEnrollment}
+                  disabled={totpCode.length !== 6}
+                >
+                  Verificar y activar
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {!qrUri && (
+          <>
+            <hr className="card__divider" />
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              {has2FA ? (
+                <Button variant="ghost">Regenerar código</Button>
+              ) : (
+                <Button variant="primary" loading={enrolling} onClick={startEnrollment}>
+                  Activar 2FA
+                </Button>
+              )}
+            </div>
+          </>
+        )}
       </Card>
 
       <SectionLabel>Sesión actual</SectionLabel>
