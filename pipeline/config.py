@@ -40,6 +40,9 @@ if not _key.is_absolute():
 GEE_SERVICE_ACCOUNT_KEY_PATH = str(_key)
 
 # ─── Zonas piloto (bounding boxes WGS84) ──────────────────────────
+# atrato_choco: 27 dragas destruidas por la Armada Nacional feb–mar 2026
+# (fuente: Armada Colombia, prensa). Ground truth duro para validar el PoC.
+# Coordenadas centradas en el tramo Quibdó–Atrato Medio donde operaron las dragas.
 PILOT_ROIS: dict[str, dict[str, float]] = {
     "caqueta_apaporis": {
         "xmin": -73.5,
@@ -52,5 +55,12 @@ PILOT_ROIS: dict[str, dict[str, float]] = {
         "ymin": 3.0,
         "xmax": -67.5,
         "ymax": 4.5,
+    },
+    "atrato_choco": {
+        # Tramo Quibdó – Río Atrato medio (máxima densidad de dragas documentada)
+        "xmin": -76.8,
+        "ymin": 5.6,
+        "xmax": -76.3,
+        "ymax": 6.5,
     },
 }

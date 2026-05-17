@@ -109,7 +109,10 @@ def detect_mining_activity(roi_bounds: dict[str, float], roi_name: str) -> list[
     bright = median_current.gt(BACKSCATTER_THRESHOLD)
     candidates = bright.And(water_mask)
     # Tamano minimo (~200 m²)
-    min_size_mask = candidates.connectedPixelCount(MIN_PIXELS + 5).gte(MIN_PIXELS)
+    # connectedPixelCount threshold = MIN_PIXELS + 1 para permitir detectar
+    # objetos de ~200 m² (2 píxeles de 10 m × 10 m). El +5 anterior era
+    # demasiado restrictivo (filtraba dragas de menos de 700 m²).
+    min_size_mask = candidates.connectedPixelCount(MIN_PIXELS + 1).gte(MIN_PIXELS)
     candidates_filtered = candidates.And(min_size_mask).selfMask().rename("candidate")
 
     change = median_current.subtract(median_baseline)
