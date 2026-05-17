@@ -153,6 +153,34 @@ body:has(.landing) {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+}
+
+/* Emblema raster — version 3D del simbolo radial.
+ * El fondo de la PNG es casi identico al surface-0 (#1A1208) de la pagina,
+ * por lo que se funde naturalmente sin necesidad de remover el fondo.
+ * Para asegurar la integracion perfecta, usamos mix-blend-mode: screen NO
+ * — eso aclararia las zonas oscuras. Usamos mix-blend-mode: lighten que
+ * mantiene el dorado/plata intactos y deja pasar el fondo solo si es mas
+ * oscuro que la imagen.
+ */
+.hero__emblem {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  /* Hace que las zonas casi-negras de la imagen se mezclen con el fondo,
+   * eliminando cualquier borde visible del cuadrado raster.
+   */
+  mix-blend-mode: lighten;
+}
+
+@media (max-width: 820px) {
+  .hero__emblem {
+    max-width: 280px;
+  }
 }
 .hero__body {
   display: flex;

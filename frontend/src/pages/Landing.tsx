@@ -39,7 +39,6 @@ import {
   IconWaveSawTool,
 } from '@tabler/icons-react';
 import Wordmark from '../components/brand/Wordmark';
-import FreddyHgSymbol from '../components/brand/FreddyHgSymbol';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 
@@ -77,7 +76,15 @@ export default function Landing() {
       {/* ─── HERO ────────────────────────────────────────── */}
       <section className="hero">
         <div className="hero__symbol">
-          <FreddyHgSymbol size={280} title="Símbolo Freddy Hg" />
+          <img
+            src="/brand/freddy-hg-emblem.png"
+            alt="Emblema Freddy Hg — patrón radial de 16 brazos en oro y plata"
+            className="hero__emblem"
+            width={560}
+            height={560}
+            loading="eager"
+            fetchPriority="high"
+          />
         </div>
         <div className="hero__body">
           <div className="landing-eyebrow">
