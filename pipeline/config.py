@@ -16,9 +16,12 @@ load_dotenv(ROOT / ".env")
 
 
 # ─── Algoritmo SAR ────────────────────────────────────────────────
-BACKSCATTER_THRESHOLD = -10.0  # dB — umbral para deteccion de objetos brillantes
-WATER_THRESHOLD = -15.0  # dB — umbral de mascara de cuerpos de agua
-MIN_PIXELS = 2  # pixeles contiguos minimos (~200 m² a resolucion 10 m)
+# Defaults conservadores (literatura Schwartz 2019); pueden ajustarse via env
+# vars sin redeploy de codigo (utiles para tunear durante demo / piloto).
+BACKSCATTER_THRESHOLD = float(os.environ.get("BACKSCATTER_THRESHOLD", "-10.0"))  # dB
+WATER_THRESHOLD = float(os.environ.get("WATER_THRESHOLD", "-15.0"))  # dB
+MIN_PIXELS = int(os.environ.get("MIN_PIXELS", "2"))  # ~200 m2 a 10 m de resolucion
+PIPELINE_DAYS_BACK = int(os.environ.get("PIPELINE_DAYS_BACK", "14"))  # ventana temporal
 DETECTION_VERSION = "freddy-hg-v1.0"
 
 # ─── Backend / API ────────────────────────────────────────────────

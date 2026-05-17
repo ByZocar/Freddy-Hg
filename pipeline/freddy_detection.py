@@ -30,6 +30,7 @@ from config import (
     GEE_SERVICE_ACCOUNT_KEY_PATH,
     MIN_PIXELS,
     PILOT_ROIS,
+    PIPELINE_DAYS_BACK,
     SECRET_KEY,
     WATER_THRESHOLD,
 )
@@ -76,7 +77,7 @@ def detect_mining_activity(roi_bounds: dict[str, float], roi_name: str) -> list[
     roi = ee.Geometry.Rectangle(
         [roi_bounds["xmin"], roi_bounds["ymin"], roi_bounds["xmax"], roi_bounds["ymax"]]
     )
-    start_date, end_date = _date_range(days_back=14)
+    start_date, end_date = _date_range(days_back=PIPELINE_DAYS_BACK)
 
     s1_current = (
         ee.ImageCollection("COPERNICUS/S1_GRD")
