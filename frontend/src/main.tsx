@@ -14,6 +14,7 @@ import './styles/tokens.css';
 import './styles/globals.css';
 import './styles/components.css';
 import './styles/layout.css';
+import './styles/landing.css';
 
 import App from './App';
 

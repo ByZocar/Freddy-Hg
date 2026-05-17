@@ -34,6 +34,18 @@ def _shorten_url(url: str) -> str:
     return url
 
 
+def build_guardian_url(alert_id: str) -> str:
+    """URL corta hacia la mini-web HTML para el guardian indigena.
+
+    Apunta al backend (no al frontend) porque el HTML estatico vive ahi
+    para minimizar bytes (NF-02: funciona con 2G).
+    Usa los primeros 8 chars del UUID para ahorrar caracteres en WhatsApp.
+    """
+    short_id = alert_id.split("-")[0][:8] if alert_id else "????????"
+    base = settings.BACKEND_URL.rstrip("/")
+    return f"{base}/a/{short_id}"
+
+
 def build_message(
     river_name: str,
     confidence_level: int,
@@ -41,16 +53,28 @@ def build_message(
     lon: float,
     alert_url: str,
 ) -> str:
-    """Construye el mensaje de ≤160 caracteres."""
+    """Construye el mensaje de ≤160 caracteres.
+
+    Formato fijo (F-19/F-20):
+        "[ALERTA] Rio <X> - Nivel <N> - <lat>,<lon> - Ver: <url>"
+    """
     short_url = _shorten_url(alert_url)
     msg = (
         f"[ALERTA] Rio {river_name} - Nivel {confidence_level} - "
         f"{lat:.4f},{lon:.4f} - Ver: {short_url}"
     )
     if len(msg) > 160:
-        # Truncar la URL al final si es necesario
-        budget = 160 - len(msg) + len(short_url)
-        msg = msg[: 160 - 1] + "."
+        # Truncar manteniendo prioridad: nivel + coords > rio_name
+        # Reservamos al menos la URL completa para que el link funcione.
+        excess = len(msg) - 160
+        cut_river = max(0, len(river_name) - excess - 1)
+        truncated_river = river_name[:cut_river] if cut_river > 0 else "—"
+        msg = (
+            f"[ALERTA] Rio {truncated_river} - Nivel {confidence_level} - "
+            f"{lat:.4f},{lon:.4f} - Ver: {short_url}"
+        )
+        if len(msg) > 160:
+            msg = msg[:159] + "."
     return msg
 
 
@@ -97,12 +121,15 @@ def dispatch_alert_notifications(alert_record: dict[str, Any]) -> dict[str, Any]
         return {"sent": 0, "skipped": True}
 
     river_name = alert_record.get("river_name") or "Amazonas"
+    # El link va siempre a la mini-web del guardian en el backend (HTML
+    # estatico, 2G-friendly), NO al frontend completo de React.
+    guardian_url = build_guardian_url(alert_record["id"])
     msg = build_message(
         river_name=river_name,
         confidence_level=alert_record.get("confidence_level", 1),
         lat=alert_record["centroid_lat"],
         lon=alert_record["centroid_lon"],
-        alert_url=alert_record.get("alert_url", "https://app.freddyhg.org"),
+        alert_url=guardian_url,
     )
 
     sent: list[dict[str, Any]] = []

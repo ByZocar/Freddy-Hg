@@ -6,6 +6,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import Wordmark from './components/brand/Wordmark';
 import { ToastProvider } from './hooks/useToast';
 import { useAuth } from './hooks/useAuth';
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import AlertDetail from './pages/AlertDetail';
@@ -33,6 +34,7 @@ export default function App() {
     <ToastProvider>
       <Routes>
         {/* Públicas */}
+        <Route path="/" element={<Landing />} />
         <Route path="/public" element={<PublicView />} />
         <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
 
@@ -54,8 +56,8 @@ export default function App() {
           element={user ? <Settings /> : <Navigate to="/login" replace />}
         />
 
-        {/* Default */}
-        <Route path="*" element={<Navigate to={user ? '/dashboard' : '/login'} replace />} />
+        {/* Default — 404 a la landing */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </ToastProvider>
   );

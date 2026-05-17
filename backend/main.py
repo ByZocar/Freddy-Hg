@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
-from .routers import alerts, export, ingest, organizations, pipeline, states
+from .routers import alerts, export, guardian, ingest, organizations, pipeline, states
 
 
 def _materialize_gee_key() -> None:
@@ -71,6 +71,9 @@ app.include_router(export.router, prefix="/api", tags=["export"])
 app.include_router(organizations.router, prefix="/api", tags=["organizations"])
 app.include_router(states.router, prefix="/api", tags=["states"])
 app.include_router(pipeline.router, prefix="/api", tags=["pipeline"])
+# Mini-web del guardian indigena: HTML estatico sin prefijo /api
+# (URL final: https://.../a/{alert_id_prefix} para que quepa en 160 chars de WhatsApp)
+app.include_router(guardian.router, tags=["guardian"])
 
 
 @app.get("/")
