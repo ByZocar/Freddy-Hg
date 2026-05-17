@@ -25,6 +25,7 @@ except ImportError:  # pragma: no cover
 from config import (
     BACKEND_URL,
     BACKSCATTER_THRESHOLD,
+    GEE_PROJECT_ID,
     GEE_SERVICE_ACCOUNT_EMAIL,
     GEE_SERVICE_ACCOUNT_KEY_PATH,
     MIN_PIXELS,
@@ -53,11 +54,14 @@ def initialize_gee() -> None:
     credentials = ee.ServiceAccountCredentials(
         GEE_SERVICE_ACCOUNT_EMAIL, str(key_path)
     )
-    ee.Initialize(credentials)
-    logger.info("✅ GEE inicializado como %s", GEE_SERVICE_ACCOUNT_EMAIL)
+    if GEE_PROJECT_ID:
+        ee.Initialize(credentials, project=GEE_PROJECT_ID)
+    else:
+        ee.Initialize(credentials)
+    logger.info("GEE inicializado como %s (project=%s)", GEE_SERVICE_ACCOUNT_EMAIL, GEE_PROJECT_ID or "default")
 
 
-def _date_range(days_back: int = 7) -> tuple[str, str]:
+def _date_range(days_back: int = 14) -> tuple[str, str]:
     end = datetime.now(timezone.utc)
     start = end - timedelta(days=days_back)
     return start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d")
@@ -72,7 +76,7 @@ def detect_mining_activity(roi_bounds: dict[str, float], roi_name: str) -> list[
     roi = ee.Geometry.Rectangle(
         [roi_bounds["xmin"], roi_bounds["ymin"], roi_bounds["xmax"], roi_bounds["ymax"]]
     )
-    start_date, end_date = _date_range(days_back=7)
+    start_date, end_date = _date_range(days_back=14)
 
     s1_current = (
         ee.ImageCollection("COPERNICUS/S1_GRD")
@@ -80,7 +84,6 @@ def detect_mining_activity(roi_bounds: dict[str, float], roi_name: str) -> list[
         .filterDate(start_date, end_date)
         .filter(ee.Filter.eq("instrumentMode", "IW"))
         .filter(ee.Filter.listContains("transmitterReceiverPolarisation", "VV"))
-        .filter(ee.Filter.eq("orbitProperties_pass", "DESCENDING"))
         .select("VV")
     )
 
@@ -88,7 +91,7 @@ def detect_mining_activity(roi_bounds: dict[str, float], roi_name: str) -> list[
         logger.warning("[%s] Sin imagenes S1 entre %s y %s", roi_name, start_date, end_date)
         return []
 
-    median_current = s1_current.median()
+    median_current = s1_current.median().rename("VV")
 
     # Baseline historico 2018-2019
     s1_baseline = (
@@ -99,28 +102,32 @@ def detect_mining_activity(roi_bounds: dict[str, float], roi_name: str) -> list[
         .filter(ee.Filter.listContains("transmitterReceiverPolarisation", "VV"))
         .select("VV")
     )
-    median_baseline = s1_baseline.median()
+    median_baseline = s1_baseline.median().rename("VV")
 
     water_mask = median_current.lt(WATER_THRESHOLD)
     bright = median_current.gt(BACKSCATTER_THRESHOLD)
-    candidates = bright.And(water_mask).selfMask()
-    candidates_filtered = (
-        candidates.connectedPixelCount(20).gte(MIN_PIXELS).And(candidates)
-    )
+    candidates = bright.And(water_mask)
+    # Tamano minimo (~200 m²)
+    min_size_mask = candidates.connectedPixelCount(MIN_PIXELS + 5).gte(MIN_PIXELS)
+    candidates_filtered = candidates.And(min_size_mask).selfMask().rename("candidate")
 
     change = median_current.subtract(median_baseline)
-    # is_new: aumento >5 dB respecto al baseline en el pixel
     new_activity_mask = change.gt(5).And(water_mask)
 
+    # Para que reduceToVectors pueda invocar Reducer.mean() necesita la banda VV
+    # ademas del label. Combinamos: label = candidate, banda extra = VV original.
+    labeled = candidates_filtered.addBands(median_current)
+
     try:
-        vectors = candidates_filtered.reduceToVectors(
+        vectors = labeled.reduceToVectors(
             geometry=roi,
             scale=10,
             geometryType="centroid",
             eightConnected=False,
             labelProperty="label",
-            reducer=ee.Reducer.count(),
+            reducer=ee.Reducer.mean(),
             maxPixels=1e9,
+            bestEffort=True,
         )
         features = vectors.getInfo().get("features", [])
     except Exception as exc:  # noqa: BLE001
@@ -137,20 +144,17 @@ def detect_mining_activity(roi_bounds: dict[str, float], roi_name: str) -> list[
         coords = feat["geometry"]["coordinates"]
         lon, lat = float(coords[0]), float(coords[1])
         props = feat.get("properties", {})
-        pixel_count = int(props.get("count", MIN_PIXELS))
+        # `mean` se calcula sobre la banda VV (porque labeled tiene candidate+VV)
+        vv_val = float(props.get("VV", BACKSCATTER_THRESHOLD))
+        # Estimacion de area: 1 pixel por defecto (centroide); refinar luego
+        pixel_count = MIN_PIXELS
+        area_m2 = pixel_count * 100.0  # 10x10 m
 
-        # Backscatter del pixel central
-        point = ee.Geometry.Point(lon, lat)
+        # Es actividad nueva (vs baseline 2018-2019)?
         try:
-            sample = median_current.sample(region=point, scale=10).first()
-            vv_val = float(sample.get("VV").getInfo()) if sample else BACKSCATTER_THRESHOLD
-        except Exception:
-            vv_val = BACKSCATTER_THRESHOLD
-
-        # Es actividad nueva?
-        try:
+            point = ee.Geometry.Point(lon, lat)
             new_sample = new_activity_mask.sample(region=point, scale=10).first()
-            is_new = bool(new_sample.get("VV").getInfo()) if new_sample else False
+            is_new = bool(new_sample.get("VV").getInfo()) if new_sample else True
         except Exception:
             is_new = True
 
@@ -161,7 +165,7 @@ def detect_mining_activity(roi_bounds: dict[str, float], roi_name: str) -> list[
                 "centroid_lat": lat,
                 "centroid_lon": lon,
                 "backscatter_vv": round(vv_val, 2),
-                "area_m2": round(pixel_count * 100.0, 1),  # 10×10 m
+                "area_m2": area_m2,
                 "pixel_count": pixel_count,
                 "is_new_activity": is_new,
             }

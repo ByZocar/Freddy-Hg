@@ -27,10 +27,14 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "")
 
 # ─── GEE ──────────────────────────────────────────────────────────
 GEE_SERVICE_ACCOUNT_EMAIL = os.environ.get("GEE_SERVICE_ACCOUNT_EMAIL", "")
-GEE_SERVICE_ACCOUNT_KEY_PATH = os.environ.get(
-    "GEE_SERVICE_ACCOUNT_KEY_PATH",
-    str(ROOT / "secrets" / "gee-service-account.json"),
-)
+GEE_PROJECT_ID = os.environ.get("GEE_PROJECT_ID", "")
+
+# Path siempre absoluto, anclado a la raíz del repo (no al cwd)
+_raw_key = os.environ.get("GEE_SERVICE_ACCOUNT_KEY_PATH", "secrets/gee-service-account.json")
+_key = Path(_raw_key)
+if not _key.is_absolute():
+    _key = ROOT / _key.relative_to(_key.anchor) if _key.anchor else ROOT / _key
+GEE_SERVICE_ACCOUNT_KEY_PATH = str(_key)
 
 # ─── Zonas piloto (bounding boxes WGS84) ──────────────────────────
 PILOT_ROIS: dict[str, dict[str, float]] = {

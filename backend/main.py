@@ -1,13 +1,36 @@
 """Punto de entrada del backend Freddy Hg (FastAPI)."""
 from __future__ import annotations
 
+import base64
 import logging
+import os
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
 from .routers import alerts, export, ingest, organizations, pipeline, states
+
+
+def _materialize_gee_key() -> None:
+    """Si GEE_SERVICE_ACCOUNT_JSON_B64 esta en env, escribe el JSON a disco.
+
+    Util en entornos como Railway donde no se pueden montar archivos de
+    secretos de manera directa: el JSON se pasa como env var base64.
+    """
+    b64 = os.environ.get("GEE_SERVICE_ACCOUNT_JSON_B64")
+    if not b64:
+        return
+    out = Path(settings.GEE_SERVICE_ACCOUNT_KEY_PATH)
+    if out.exists():
+        return
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_bytes(base64.b64decode(b64))
+    logging.getLogger(__name__).info("GEE key materialized at %s", out)
+
+
+_materialize_gee_key()
 
 
 logging.basicConfig(
