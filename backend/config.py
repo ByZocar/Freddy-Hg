@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     # Mistral / OpenRouter
     MISTRAL_API_KEY: str = ""
     MISTRAL_BASE_URL: str = "https://openrouter.ai/api/v1"
-    MISTRAL_MODEL: str = "mistralai/mistral-small-latest"
+    MISTRAL_MODEL: str = "mistralai/mistral-small-24b-instruct-2501"
 
     # GEE
     GEE_SERVICE_ACCOUNT_EMAIL: str = ""

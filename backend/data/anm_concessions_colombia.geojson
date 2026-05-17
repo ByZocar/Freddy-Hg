@@ -1,0 +1,46 @@
+{
+  "type": "FeatureCollection",
+  "name": "anm_concessions_colombia_sample",
+  "comment": "Sample subset of ANM mining concessions covering the Freddy Hg pilot ROIs. Replace with full Catastro Minero dataset (anm.gov.co) before production launch. Polygons are approximate placeholders for the MVP.",
+  "crs": { "type": "name", "properties": { "name": "EPSG:4326" } },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id_titulo": "LJG-08001",
+        "estado_titulo": "Vigente",
+        "modalidad": "Contrato de Concesion",
+        "fuente": "ANM Catastro Minero sample"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-71.85, 0.10],
+          [-71.70, 0.10],
+          [-71.70, 0.25],
+          [-71.85, 0.25],
+          [-71.85, 0.10]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id_titulo": "GLE-11201",
+        "estado_titulo": "Vigente",
+        "modalidad": "Solicitud",
+        "fuente": "ANM Catastro Minero sample"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-67.95, 3.85],
+          [-67.80, 3.85],
+          [-67.80, 4.00],
+          [-67.95, 4.00],
+          [-67.95, 3.85]
+        ]]
+      }
+    }
+  ]
+}
