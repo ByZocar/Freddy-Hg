@@ -1,110 +1,138 @@
-import { FormEvent, useState } from 'react';
+/**
+ * ☿ FREDDY Hg — Login
+ * Spec: FRONTEND_SPEC_COMPLETO.md § Pantalla 1.
+ */
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { IconMail, IconLock, IconEye, IconEyeOff, IconAlertTriangle } from '@tabler/icons-react';
+import Wordmark from '../components/brand/Wordmark';
+import { Button } from '../components/ui/Button';
+import { Field, Input } from '../components/ui/Input';
 import { supabase } from '../supabaseClient';
 
 export default function Login() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [otpCode, setOtpCode] = useState('');
-  const [step, setStep] = useState<'credentials' | 'totp'>('credentials');
-  const [factorId, setFactorId] = useState<string | null>(null);
-  const [challengeId, setChallengeId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  async function handleSubmit(e: FormEvent) {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-      if (signInError) throw signInError;
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+    setLoading(false);
 
-      // Comprobar si hay un factor TOTP enrolado y verificado
-      const { data: factors } = await supabase.auth.mfa.listFactors();
-      const totp = factors?.totp?.find((f) => f.status === 'verified');
-      if (totp) {
-        const { data: challenge, error: cErr } = await supabase.auth.mfa.challenge({ factorId: totp.id });
-        if (cErr) throw cErr;
-        setFactorId(totp.id);
-        setChallengeId(challenge!.id);
-        setStep('totp');
-      } else {
-        window.location.href = '/dashboard';
-      }
-    } catch (err: any) {
-      setError(err.message ?? 'Error desconocido');
-    } finally {
-      setLoading(false);
+    if (signInError) {
+      setError(
+        signInError.message === 'Invalid login credentials'
+          ? 'Correo o contraseña incorrectos. Verifica tus datos.'
+          : signInError.message,
+      );
+      return;
     }
-  }
-
-  async function handleTotp(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    try {
-      const { error: vErr } = await supabase.auth.mfa.verify({
-        factorId: factorId!,
-        challengeId: challengeId!,
-        code: otpCode,
-      });
-      if (vErr) throw vErr;
-      window.location.href = '/dashboard';
-    } catch (err: any) {
-      setError(err.message ?? 'Código inválido');
-    } finally {
-      setLoading(false);
-    }
-  }
+    navigate('/dashboard', { replace: true });
+  };
 
   return (
-    <div className="login">
-      <div className="login-card">
-        <h1>☿ Freddy Hg</h1>
-        <p className="tagline">Acceso autorizado para CARs, ONGs y Fiscalía</p>
+    <main className="auth-shell">
+      <div className="auth-shell__content">
+        <div className="auth-shell__brand">
+          <Wordmark variant="large" />
+          <div className="auth-shell__tagline">Sistema de Alerta Temprana Satelital</div>
+        </div>
 
-        {step === 'credentials' && (
-          <form onSubmit={handleSubmit}>
-            <label>
-              Correo institucional
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-            </label>
-            <label>
-              Contraseña
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-            </label>
-            {error && <div className="error">{error}</div>}
-            <button type="submit" disabled={loading}>
-              {loading ? 'Iniciando…' : 'Iniciar sesión'}
-            </button>
-          </form>
+        {error && (
+          <div
+            className="alert-box alert-box--critical"
+            style={{ width: '100%' }}
+            role="alert"
+          >
+            <span className="alert-box__icon">
+              <IconAlertTriangle size={16} stroke={1.5} />
+            </span>
+            <div className="alert-box__content">{error}</div>
+          </div>
         )}
 
-        {step === 'totp' && (
-          <form onSubmit={handleTotp}>
-            <p>Ingresa el código de 6 dígitos de Google Authenticator.</p>
-            <label>
-              Código TOTP
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]{6}"
-                value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value)}
+        <div className="auth-card">
+          <h1 className="auth-card__title">Iniciar sesión</h1>
+
+          <form onSubmit={handleSubmit} noValidate>
+            <Field label="Correo electrónico">
+              <Input
+                type="email"
+                name="email"
+                autoComplete="email"
                 required
+                placeholder="correo@corpoamazonia.gov.co"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                iconLeft={<IconMail size={16} stroke={1.5} />}
               />
-            </label>
-            {error && <div className="error">{error}</div>}
-            <button type="submit" disabled={loading}>
-              Verificar
-            </button>
-          </form>
-        )}
+            </Field>
 
-        <p className="footer-note">
-          <a href="/public">Acceder a la vista pública (sin login)</a>
-        </p>
+            <Field label="Contraseña">
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                name="password"
+                autoComplete="current-password"
+                required
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                iconLeft={<IconLock size={16} stroke={1.5} />}
+                iconRight={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'inherit',
+                      cursor: 'pointer',
+                      padding: 4,
+                      display: 'inline-flex',
+                    }}
+                  >
+                    {showPassword ? (
+                      <IconEyeOff size={16} stroke={1.5} />
+                    ) : (
+                      <IconEye size={16} stroke={1.5} />
+                    )}
+                  </button>
+                }
+              />
+            </Field>
+
+            <button type="button" className="auth-card__forgot">
+              ¿Olvidaste tu contraseña?
+            </button>
+
+            <Button type="submit" variant="primary" block loading={loading}>
+              {loading ? 'Verificando' : 'Iniciar sesión'}
+            </Button>
+
+            <div className="auth-card__divider">
+              <span>o</span>
+            </div>
+
+            <Link to="/public" className="auth-card__public-link">
+              Acceso público para periodistas →
+            </Link>
+          </form>
+        </div>
+
+        <div className="auth-footer">
+          Freddy Hg · 2026 · github.com/ByZocar/Freddy-Hg
+        </div>
       </div>
-    </div>
+    </main>
   );
 }

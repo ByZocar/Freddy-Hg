@@ -1,83 +1,169 @@
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+/**
+ * ☿ FREDDY Hg — Dashboard
+ * Spec: FRONTEND_SPEC_COMPLETO.md § Pantalla 3 (layout 3 zonas).
+ */
+import { useEffect, useMemo, useState } from 'react';
+import { IconSatellite } from '@tabler/icons-react';
+import Navbar from '../components/layout/Navbar';
+import Sidebar from '../components/layout/Sidebar';
+import type { DateRange, LayerToggles, LevelFilter } from '../components/layout/Sidebar';
 import AlertMap from '../components/AlertMap';
 import AlertPanel from '../components/AlertPanel';
 import { useAlerts } from '../hooks/useAlerts';
-import { supabase } from '../supabaseClient';
+import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../hooks/useToast';
+import { downloadPdf, updateAlertState } from '../lib/api';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+const DEFAULT_LAYERS: LayerToggles = {
+  alerts: true,
+  rivers: true,
+  anm: true,
+  raisg: true,
+  protected: true,
+};
+
+function levelMatch(level: number | null, filter: LevelFilter): boolean {
+  if (filter === 'all') return true;
+  if (filter === 'critical') return level === 3;
+  if (filter === 'warning') return level === 2;
+  if (filter === 'monitor') return level === 1;
+  return true;
+}
+
+function withinDateRange(createdAt: string, range: DateRange): boolean {
+  if (range === 'all') return true;
+  const diffMs = Date.now() - new Date(createdAt).getTime();
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+  if (range === '24h') return diffDays <= 1;
+  if (range === '7d') return diffDays <= 7;
+  if (range === '30d') return diffDays <= 30;
+  return true;
+}
+
+function searchMatch(query: string, alert: { centroid_lat: number; centroid_lon: number }): boolean {
+  if (!query.trim()) return true;
+  const q = query.toLowerCase().trim();
+  const coords = `${alert.centroid_lat.toFixed(4)} ${alert.centroid_lon.toFixed(4)}`;
+  return coords.includes(q) || q === '';
+}
 
 export default function Dashboard() {
-  const [confidenceMin, setConfidenceMin] = useState(1);
-  const [indigenousOnly, setIndigenousOnly] = useState(false);
+  const { user } = useAuth();
+  const toast = useToast();
+  const { alerts: allAlerts, loading, error } = useAlerts({ confidenceMin: 1 });
+  const [search, setSearch] = useState('');
+  const [levelFilter, setLevelFilter] = useState<LevelFilter>('all');
+  const [dateRange, setDateRange] = useState<DateRange>('30d');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [layers, setLayers] = useState<LayerToggles>(DEFAULT_LAYERS);
+  const [stateById, setStateById] = useState<Record<string, string>>({});
 
-  const filters = useMemo(() => ({ confidenceMin, indigenousOnly }), [confidenceMin, indigenousOnly]);
-  const { alerts, loading, error } = useAlerts(filters);
-  const selected = alerts.find((a) => a.id === selectedId) ?? null;
+  const filtered = useMemo(() => {
+    return allAlerts.filter(
+      (a) =>
+        levelMatch(a.confidence_level, levelFilter) &&
+        withinDateRange(a.created_at, dateRange) &&
+        searchMatch(search, a),
+    );
+  }, [allAlerts, levelFilter, dateRange, search]);
 
-  async function handleExport(id: string) {
-    window.open(`${BACKEND_URL}/api/export/pdf/${id}`, '_blank');
-  }
+  const selected = useMemo(
+    () => (selectedId ? allAlerts.find((a) => a.id === selectedId) ?? null : null),
+    [selectedId, allAlerts],
+  );
 
-  async function handleChangeState(id: string, state: string) {
-    await fetch(`${BACKEND_URL}/api/alerts/${id}/state`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ state }),
-    });
-    alert(`Estado actualizado: ${state}`);
-  }
+  // Reset selection si la alerta seleccionada deja de existir en el filtrado
+  useEffect(() => {
+    if (selectedId && !filtered.find((a) => a.id === selectedId)) {
+      // permanece visible aunque esté fuera del filtro — el usuario debe poder cerrarla
+    }
+  }, [filtered, selectedId]);
+
+  useEffect(() => {
+    if (error) toast.error(`No se pudieron cargar las alertas: ${error}`);
+  }, [error, toast]);
+
+  const handleExport = async (id: string) => {
+    toast.info('Generando PDF…');
+    try {
+      const blob = await downloadPdf(id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `freddy_hg_alerta_${id.slice(0, 8)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('PDF descargado');
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  const handleChangeState = async (id: string, state: string) => {
+    try {
+      await updateAlertState(id, state);
+      setStateById((prev) => ({ ...prev, [id]: state }));
+      toast.success(`Estado actualizado a "${state.replace(/_/g, ' ')}"`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
 
   return (
     <div className="dashboard">
-      <header className="topbar">
-        <div className="brand">☿ Freddy Hg</div>
-        <nav>
-          <Link to="/admin">Admin</Link>
-          <Link to="/public">Vista pública</Link>
-          <button onClick={() => supabase.auth.signOut()}>Cerrar sesión</button>
-        </nav>
-      </header>
+      <Navbar user={user} alerts={allAlerts} />
+      <Sidebar
+        alerts={filtered}
+        totalAlerts={filtered.length}
+        search={search}
+        onSearchChange={setSearch}
+        levelFilter={levelFilter}
+        onLevelFilterChange={setLevelFilter}
+        dateRange={dateRange}
+        onDateRangeChange={setDateRange}
+        selectedId={selectedId}
+        onSelectAlert={setSelectedId}
+        layers={layers}
+        onLayersChange={setLayers}
+      />
+      <main className="dashboard__main">
+        <AlertMap
+          alerts={filtered}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          layers={layers}
+        />
 
-      <aside className="filters">
-        <h3>Filtros</h3>
-        <label>
-          Confianza mínima
-          <select value={confidenceMin} onChange={(e) => setConfidenceMin(Number(e.target.value))}>
-            <option value={1}>1 — todas</option>
-            <option value={2}>2 — relevantes</option>
-            <option value={3}>3 — críticas</option>
-          </select>
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={indigenousOnly}
-            onChange={(e) => setIndigenousOnly(e.target.checked)}
-          />
-          Solo territorios indígenas
-        </label>
-        <div className="metrics">
-          {loading ? 'Cargando…' : `${alerts.length} alertas`}
-        </div>
-        {error && <div className="error">⚠️ {error}</div>}
-        <a href={`${BACKEND_URL}/api/alerts/export/geojson?confidence_min=${confidenceMin}`} className="export-link">
-          Descargar GeoJSON
-        </a>
-        <a href={`${BACKEND_URL}/api/alerts/export/csv?confidence_min=${confidenceMin}`} className="export-link">
-          Descargar CSV
-        </a>
-      </aside>
+        {!loading && filtered.length === 0 && (
+          <div className="map-empty-overlay">
+            <IconSatellite size={48} stroke={1.5} style={{ color: 'var(--text-muted)' }} />
+            <div
+              className="font-display"
+              style={{
+                fontSize: 'var(--fs-h2)',
+                color: 'var(--text-primary)',
+              }}
+            >
+              Sin alertas detectadas
+            </div>
+            <div style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-body)' }}>
+              No hay candidatos del pipeline SAR en el rango y filtros seleccionados.
+            </div>
+            <div className="font-mono" style={{ fontSize: 'var(--fs-small)', color: 'var(--text-muted)' }}>
+              PIPELINE_DAYS_BACK · BACKSCATTER_THRESHOLD · MIN_PIXELS configurables
+            </div>
+          </div>
+        )}
 
-      <main className="map-area">
-        <AlertMap alerts={alerts} onSelect={setSelectedId} />
         {selected && (
           <AlertPanel
             alert={selected}
             onClose={() => setSelectedId(null)}
             onExport={handleExport}
             onChangeState={handleChangeState}
+            currentState={stateById[selected.id] ?? 'nuevo'}
           />
         )}
       </main>

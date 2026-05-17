@@ -1,0 +1,123 @@
+/* ☿ FREDDY Hg — Design Tokens
+ * Fuente de verdad: FreddyHg_BrandGuidelines_Frontend.md + FreddyHg_FrontendStyle.md
+ * NO modificar sin actualizar los documentos de brand.
+ */
+
+:root {
+  /* === Marca === */
+  --color-brand-gold:        #C8860A;
+  --color-brand-gold-light:  #E8A820;
+  --color-brand-gold-bright: #F5D060;
+  --color-brand-gold-dark:   #8B6914;
+  --color-brand-silver:      #A0A0A0;
+
+  /* === Superficies (4 niveles, todas opacas, sin blancos) === */
+  --surface-0:  #1A1208;   /* Fondo de página */
+  --surface-1:  #241A0C;   /* Navbar, sidebar */
+  --surface-2:  #2E2010;   /* Cards, paneles, modales */
+  --surface-3:  #3A2A14;   /* Inputs, dropdowns, tooltips */
+
+  /* === Alias para superficies (compatibilidad con guidelines) === */
+  --color-bg-dark:           var(--surface-0);
+  --color-bg-dark-secondary: var(--surface-1);
+  --color-bg-dark-surface:   var(--surface-2);
+  --color-bg-elevated:       var(--surface-3);
+
+  /* === Light mode (solo para PDF exportado) === */
+  --color-bg-light:          #F2EDD8;
+  --color-bg-light-surface:  #E8E0C8;
+
+  /* === Alertas semánticas === */
+  --color-alert-critical:    #D4380A;
+  --color-alert-warning:     #E87820;
+  --color-alert-monitor:     #C8860A;
+  --color-safe:              #1A7A4A;
+  --color-river:             #2A5A8A;
+  --color-river-light:       #4A8AB0;
+
+  /* === Texto (dark mode) === */
+  --text-primary:    #F2EDD8;
+  --text-secondary:  #A89878;
+  --text-muted:      #6A5A40;
+  --text-gold:       #C8860A;
+  --text-silver:     #A0A0A0;
+  --text-critical:   #F07050;
+  --text-warning:    #F0A060;
+  --text-safe:       #60B880;
+
+  /* === Texto (light mode, solo PDF) === */
+  --text-primary-lm:   #1A1208;
+  --text-secondary-lm: #6A5A40;
+  --text-muted-lm:     #9A8A70;
+
+  /* === Bordes — todos semitransparentes sobre dorado === */
+  --border-subtle:   rgba(200, 134, 10, 0.08);
+  --border-default:  rgba(200, 134, 10, 0.15);
+  --border-strong:   rgba(200, 134, 10, 0.28);
+  --border-focus:    rgba(200, 134, 10, 0.60);
+  --border-critical: rgba(212, 56, 10, 0.40);
+
+  /* === Familias tipográficas === */
+  --font-display: 'Barlow Condensed', sans-serif;
+  --font-body:    'IBM Plex Sans', sans-serif;
+  --font-mono:    'IBM Plex Mono', monospace;
+
+  /* === Pesos === */
+  --fw-display:   800;
+  --fw-medium:    500;
+  --fw-regular:   400;
+
+  /* === Tamaños de fuente === */
+  --fs-hero:      72px;
+  --fs-h1:        48px;
+  --fs-h2:        32px;
+  --fs-h3:        22px;
+  --fs-body-lg:   16px;
+  --fs-body:      14px;
+  --fs-small:     12px;
+  --fs-micro:     11px;
+  --fs-tiny:      10px;
+  --fs-mono:      13px;
+  --fs-mono-sm:   11px;
+
+  /* === Interlineado === */
+  --lh-display:   1;
+  --lh-body:      1.6;
+  --lh-tight:     1.4;
+  --lh-relaxed:   1.75;
+
+  /* === Letter spacing === */
+  --ls-display:   -0.01em;
+  --ls-caps:       0.06em;
+  --ls-mono:       0;
+
+  /* === Radios de borde === */
+  --radius-sm:  6px;   /* Badges, tags */
+  --radius-md:  8px;   /* Botones, inputs, cards pequeñas */
+  --radius-lg: 12px;   /* Cards, paneles */
+  --radius-xl: 16px;   /* Modales */
+  --radius-pill: 999px;
+
+  /* === Espaciado (múltiplos de 4) === */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* === Layout fijo === */
+  --navbar-height:   60px;
+  --sidebar-width:  280px;
+  --panel-width:    360px;
+
+  /* === Transiciones === */
+  --transition-fast: 120ms ease;
+  --transition-base: 150ms ease;
+  --transition-slow: 200ms ease-out;
+}

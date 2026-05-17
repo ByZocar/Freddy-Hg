@@ -1,0 +1,184 @@
+/* ☿ FREDDY Hg — Global styles
+ * Reset, body, focus rings, scrollbars, helpers.
+ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  font-family: var(--font-body);
+  font-weight: var(--fw-regular);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-primary);
+  background: var(--surface-0);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  color-scheme: dark;
+  overflow: hidden;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: inherit;
+}
+
+input,
+select,
+textarea {
+  font-family: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--text-gold);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+a:hover {
+  color: var(--color-brand-gold-light);
+}
+
+/* === Focus ring obligatorio (accesibilidad) === */
+*:focus {
+  outline: none;
+}
+*:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--surface-0), 0 0 0 4px var(--border-focus);
+}
+
+/* === Scrollbars dark theme === */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--surface-0);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--surface-0);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+/* === Selección de texto === */
+::selection {
+  background: rgba(200, 134, 10, 0.30);
+  color: var(--text-primary);
+}
+
+/* === Helpers de tipografía === */
+.font-display {
+  font-family: var(--font-display);
+  font-weight: var(--fw-display);
+  letter-spacing: var(--ls-display);
+  text-transform: uppercase;
+  line-height: var(--lh-display);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+  letter-spacing: var(--ls-mono);
+}
+
+.text-caps {
+  text-transform: uppercase;
+  letter-spacing: var(--ls-caps);
+}
+
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* === Helper para visually-hidden (a11y) === */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* === Keyframes === */
+@keyframes alert-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(212, 56, 10, 0.6); }
+  70%  { box-shadow: 0 0 0 10px rgba(212, 56, 10, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(212, 56, 10, 0); }
+}
+
+@keyframes skeleton-shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes status-pulse-safe {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(26, 122, 74, 0); }
+  50%      { box-shadow: 0 0 0 4px rgba(26, 122, 74, 0.40); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-4px); }
+  75%      { transform: translateX(4px); }
+}
+
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* === Loading screen (mientras useAuth resuelve) === */
+.app-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: var(--space-4);
+  height: 100vh;
+  background: var(--surface-0);
+}
+.app-loading__text {
+  font-family: var(--font-display);
+  font-weight: var(--fw-display);
+  font-size: var(--fs-h3);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-display);
+}

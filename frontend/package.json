@@ -10,7 +10,11 @@
     "lint": "eslint . --ext ts,tsx"
   },
   "dependencies": {
+    "@fontsource/barlow-condensed": "^5.2.8",
+    "@fontsource/ibm-plex-mono": "^5.2.7",
+    "@fontsource/ibm-plex-sans": "^5.2.8",
     "@supabase/supabase-js": "^2.48.0",
+    "@tabler/icons-react": "^3.44.0",
     "mapbox-gl": "^3.9.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
