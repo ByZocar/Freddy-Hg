@@ -68,3 +68,4 @@ backend/logs/
 06_pruebas/screenshots/*.jpg
 !06_pruebas/**/README.md
 !06_pruebas/**/.gitkeep
+frontend/tsconfig.tsbuildinfo
