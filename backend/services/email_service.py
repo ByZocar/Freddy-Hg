@@ -337,11 +337,11 @@ def send_alert_email(
     try:
         if SMTP_PORT == 465:
             ctx = ssl.create_default_context()
-            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=ctx) as server:
+            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=ctx, timeout=20) as server:
                 server.login(SMTP_USER, SMTP_PASSWORD)
                 server.sendmail(ALERT_EMAIL_FROM or SMTP_USER, recipients, msg.as_string())
         else:
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as server:
                 server.ehlo()
                 server.starttls(context=ssl.create_default_context())
                 server.login(SMTP_USER, SMTP_PASSWORD)
@@ -350,9 +350,12 @@ def send_alert_email(
         logger.info("Email sent to %s — subject: %s", to_address, subject)
         return {"sent": True, "to": to_address, "subject": subject}
 
-    except smtplib.SMTPException as exc:
+    except smtplib.SMTPAuthenticationError as exc:
+        logger.error("SMTP auth error for %s: %s", to_address, exc)
+        return {"sent": False, "error": f"SMTP auth failed: {exc.smtp_code} {exc.smtp_error.decode() if isinstance(exc.smtp_error, bytes) else exc.smtp_error}", "to": to_address}
+    except (smtplib.SMTPException, OSError) as exc:
         logger.error("SMTP error sending to %s: %s", to_address, exc)
-        return {"sent": False, "error": str(exc), "to": to_address}
+        return {"sent": False, "error": f"{type(exc).__name__}: {exc}", "to": to_address}
 
 
 def notify_car_organizations(alert: dict[str, Any], dashboard_url: str) -> list[dict[str, Any]]:
