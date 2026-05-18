@@ -1,42 +1,44 @@
 """Servicio de email para notificaciones al funcionario CAR (F-11).
 
-Usa SMTP estándar (Python smtplib built-in, sin dependencias extra).
-Compatible con Gmail, SendGrid, Resend, o cualquier proveedor SMTP.
+Usa Resend (https://resend.com) — API HTTP transaccional.
+Razón del cambio vs. SMTP directo: Railway, Vercel, Heroku y otros PaaS
+bloquean el puerto 587 saliente para prevenir spam, así que `smtplib`
+falla con "Network is unreachable". Resend usa solo HTTPS estándar.
 
 Configuración via variables de entorno:
-    SMTP_HOST      - servidor SMTP (ej: smtp.gmail.com)
-    SMTP_PORT      - puerto (587 para TLS, 465 para SSL)
-    SMTP_USER      - usuario / remitente
-    SMTP_PASSWORD  - contraseña o app password
-    ALERT_EMAIL_FROM  - dirección de remitente visible (ej: alertas@freddyhg.org)
+    RESEND_API_KEY    - API key de resend.com (empieza con "re_")
+    ALERT_EMAIL_FROM  - remitente visible (default "Freddy Hg <onboarding@resend.dev>")
     ALERT_EMAIL_BCC   - copia oculta al equipo para monitoreo (opcional)
 
-Sin estas variables, el servicio loguea el email y lo omite silenciosamente
+Para usar un dominio propio (ej: alertas@freddyhg.org), el dominio debe
+estar verificado en resend.com → Domains. Por defecto usamos el dominio
+sandbox de Resend que funciona sin verificación.
+
+Sin RESEND_API_KEY, el servicio loguea el email y lo omite silenciosamente
 (graceful degradation — el pipeline no falla si el email no está configurado).
 """
 from __future__ import annotations
 
 import logging
 import os
-import smtplib
-import ssl
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from typing import Any
+
+import requests
 
 logger = logging.getLogger(__name__)
 
 # ─── Config desde env ─────────────────────────────────────────────
-SMTP_HOST = os.environ.get("SMTP_HOST", "")
-SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
-SMTP_USER = os.environ.get("SMTP_USER", "")
-SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
-ALERT_EMAIL_FROM = os.environ.get("ALERT_EMAIL_FROM", SMTP_USER)
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
+RESEND_API_URL = "https://api.resend.com/emails"
+ALERT_EMAIL_FROM = os.environ.get(
+    "ALERT_EMAIL_FROM",
+    "Freddy Hg <onboarding@resend.dev>",  # dominio sandbox de Resend
+)
 ALERT_EMAIL_BCC = os.environ.get("ALERT_EMAIL_BCC", "")
 
 
-def _smtp_configured() -> bool:
-    return bool(SMTP_HOST and SMTP_USER and SMTP_PASSWORD)
+def _email_configured() -> bool:
+    return bool(RESEND_API_KEY)
 
 
 # ─── Mapeadores de presentación ───────────────────────────────────
@@ -300,62 +302,76 @@ def send_alert_email(
     alert: dict[str, Any],
     dashboard_url: str,
 ) -> dict[str, Any]:
-    """Envía el email de alerta al funcionario CAR.
+    """Envía el email de alerta al funcionario CAR vía Resend HTTP API.
 
-    Usa TLS (puerto 587) por defecto. Si SMTP_PORT=465 cambia a SSL.
-    Graceful degradation: si SMTP no está configurado, loguea y retorna
-    sin error para no interrumpir el pipeline.
+    Graceful degradation: si RESEND_API_KEY no está configurada, loguea
+    y retorna sin error para no interrumpir el pipeline.
 
     Args:
         to_address: correo institucional del destinatario (contact_email de la org).
         alert: dict completo de la alerta.
         dashboard_url: URL del dashboard (frontend URL del producto).
     """
-    if not _smtp_configured():
+    if not _email_configured():
         logger.info(
-            "SMTP not configured — skipping email to %s (set SMTP_HOST, SMTP_USER, SMTP_PASSWORD)",
+            "RESEND_API_KEY not configured — skipping email to %s",
             to_address,
         )
-        return {"sent": False, "reason": "smtp_not_configured", "to": to_address}
+        return {"sent": False, "reason": "resend_not_configured", "to": to_address}
 
     subject, body_html, body_text = build_alert_email(alert, dashboard_url)
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = ALERT_EMAIL_FROM or SMTP_USER
-    msg["To"] = to_address
+    payload: dict[str, Any] = {
+        "from": ALERT_EMAIL_FROM,
+        "to": [to_address],
+        "subject": subject,
+        "html": body_html,
+        "text": body_text,
+    }
     if ALERT_EMAIL_BCC:
-        msg["Bcc"] = ALERT_EMAIL_BCC
-
-    msg.attach(MIMEText(body_text, "plain", "utf-8"))
-    msg.attach(MIMEText(body_html, "html", "utf-8"))
-
-    recipients = [to_address]
-    if ALERT_EMAIL_BCC:
-        recipients.append(ALERT_EMAIL_BCC)
+        payload["bcc"] = [ALERT_EMAIL_BCC]
 
     try:
-        if SMTP_PORT == 465:
-            ctx = ssl.create_default_context()
-            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=ctx, timeout=20) as server:
-                server.login(SMTP_USER, SMTP_PASSWORD)
-                server.sendmail(ALERT_EMAIL_FROM or SMTP_USER, recipients, msg.as_string())
-        else:
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as server:
-                server.ehlo()
-                server.starttls(context=ssl.create_default_context())
-                server.login(SMTP_USER, SMTP_PASSWORD)
-                server.sendmail(ALERT_EMAIL_FROM or SMTP_USER, recipients, msg.as_string())
-
-        logger.info("Email sent to %s — subject: %s", to_address, subject)
-        return {"sent": True, "to": to_address, "subject": subject}
-
-    except smtplib.SMTPAuthenticationError as exc:
-        logger.error("SMTP auth error for %s: %s", to_address, exc)
-        return {"sent": False, "error": f"SMTP auth failed: {exc.smtp_code} {exc.smtp_error.decode() if isinstance(exc.smtp_error, bytes) else exc.smtp_error}", "to": to_address}
-    except (smtplib.SMTPException, OSError) as exc:
-        logger.error("SMTP error sending to %s: %s", to_address, exc)
+        resp = requests.post(
+            RESEND_API_URL,
+            headers={
+                "Authorization": f"Bearer {RESEND_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+            timeout=15,
+        )
+    except requests.RequestException as exc:
+        logger.error("Network error sending to %s: %s", to_address, exc)
         return {"sent": False, "error": f"{type(exc).__name__}: {exc}", "to": to_address}
+
+    if resp.status_code == 200:
+        data = resp.json()
+        logger.info(
+            "Email sent to %s (resend id=%s) — subject: %s",
+            to_address, data.get("id"), subject,
+        )
+        return {
+            "sent": True,
+            "to": to_address,
+            "subject": subject,
+            "resend_id": data.get("id"),
+        }
+
+    # Resend devuelve detalles del error en JSON
+    try:
+        err = resp.json()
+    except Exception:
+        err = {"message": resp.text[:300]}
+    logger.error(
+        "Resend error for %s — HTTP %d: %s",
+        to_address, resp.status_code, err,
+    )
+    return {
+        "sent": False,
+        "error": f"HTTP {resp.status_code}: {err.get('message') or err}",
+        "to": to_address,
+    }
 
 
 def notify_car_organizations(alert: dict[str, Any], dashboard_url: str) -> list[dict[str, Any]]:

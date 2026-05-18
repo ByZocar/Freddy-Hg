@@ -50,14 +50,12 @@ class Settings(BaseSettings):
     # Postgres directo (para aplicar schema; opcional)
     POSTGRES_PASSWORD: Optional[str] = None
 
-    # SMTP — email al funcionario CAR (F-11)
-    # Configurar con Gmail (app password) o cualquier proveedor SMTP.
+    # Resend — email al funcionario CAR (F-11)
+    # SMTP directo no funciona en PaaS (Railway bloquea puerto 587).
+    # Usamos Resend HTTP API: free tier 3000 emails/mes.
     # Si no se configura, el email se omite silenciosamente (graceful degradation).
-    SMTP_HOST: str = ""
-    SMTP_PORT: int = 587
-    SMTP_USER: str = ""
-    SMTP_PASSWORD: str = ""
-    ALERT_EMAIL_FROM: str = ""
+    RESEND_API_KEY: str = ""
+    ALERT_EMAIL_FROM: str = "Freddy Hg <onboarding@resend.dev>"
     ALERT_EMAIL_BCC: str = ""
 
     model_config = SettingsConfigDict(
