@@ -35,6 +35,12 @@ ALERT_EMAIL_FROM = os.environ.get(
     "Freddy Hg <onboarding@resend.dev>",  # dominio sandbox de Resend
 )
 ALERT_EMAIL_BCC = os.environ.get("ALERT_EMAIL_BCC", "")
+ALERT_EMAIL_REPLY_TO = os.environ.get("ALERT_EMAIL_REPLY_TO", "")
+
+# URL publica del logo (Vercel sirve los assets estaticos del frontend).
+# Los clientes de email cargan imagenes via HTTPS sin problemas.
+LOGO_URL = "https://freddy-hg.vercel.app/brand/freddy-hg-emblem.png"
+LANDING_URL = "https://freddy-hg.vercel.app"
 
 
 def _email_configured() -> bool:
@@ -129,6 +135,9 @@ def build_alert_email(alert: dict[str, Any], dashboard_url: str) -> tuple[str, s
           </div>
         </td></tr>"""
 
+    logo_url = LOGO_URL
+    landing_url = LANDING_URL
+
     body_html = f"""<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -141,18 +150,27 @@ def build_alert_email(alert: dict[str, Any], dashboard_url: str) -> tuple[str, s
   <tr><td align="center">
     <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#1A1208;border:0.5px solid rgba(200,134,10,0.20);border-radius:12px;overflow:hidden;">
 
-      <!-- HEADER -->
+      <!-- HEADER con emblema 3D -->
       <tr>
-        <td style="background:#241A0C;padding:20px 28px;border-bottom:0.5px solid rgba(200,134,10,0.15);">
-          <span style="font-family:'Barlow Condensed',Arial,sans-serif;font-weight:800;font-size:24px;color:#C8860A;text-transform:uppercase;letter-spacing:-0.01em;">
-            FREDDY
-          </span>
-          <span style="font-family:'Barlow Condensed',Arial,sans-serif;font-weight:400;font-size:24px;color:#A0A0A0;letter-spacing:0.03em;">
-            Hg
-          </span>
-          <span style="float:right;font-family:monospace;font-size:11px;color:#6A5A40;padding-top:6px;">
-            Sistema de Alerta Satelital
-          </span>
+        <td style="background:#241A0C;padding:18px 28px;border-bottom:0.5px solid rgba(200,134,10,0.15);">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td valign="middle" style="width:40px;">
+                <a href="{landing_url}" style="text-decoration:none;">
+                  <img src="{logo_url}" alt="" width="32" height="32" style="display:block;border:0;outline:none;">
+                </a>
+              </td>
+              <td valign="middle" style="padding-left:12px;">
+                <span style="font-family:'Barlow Condensed',Arial,sans-serif;font-weight:800;font-size:22px;color:#C8860A;text-transform:uppercase;letter-spacing:-0.01em;">FREDDY</span>
+                <span style="font-family:'Barlow Condensed',Arial,sans-serif;font-weight:400;font-size:22px;color:#A0A0A0;letter-spacing:0.03em;">Hg</span>
+              </td>
+              <td valign="middle" align="right">
+                <span style="font-family:monospace;font-size:10px;color:#6A5A40;text-transform:uppercase;letter-spacing:0.06em;">
+                  Alerta Satelital
+                </span>
+              </td>
+            </tr>
+          </table>
         </td>
       </tr>
 
@@ -241,17 +259,61 @@ def build_alert_email(alert: dict[str, Any], dashboard_url: str) -> tuple[str, s
 
       <!-- CTA -->
       <tr>
-        <td style="padding:20px 28px 28px;">
+        <td style="padding:20px 28px 8px;">
           <a href="{alert_url}"
              style="display:block;background:#C8860A;color:#1A1208;font-family:'Barlow Condensed',Arial,sans-serif;font-weight:800;font-size:16px;text-transform:uppercase;letter-spacing:0.02em;text-decoration:none;padding:14px 24px;border-radius:8px;text-align:center;">
             Ver alerta en el dashboard →
           </a>
-          <p style="font-family:monospace;font-size:10px;color:#6A5A40;text-align:center;margin:12px 0 0;">
-            ALERT-{alert_id_short} · Sentinel-1 SAR · SHA-256: {sha_short}
+          <p style="font-family:'IBM Plex Sans',Arial,sans-serif;font-size:11px;color:#6A5A40;text-align:center;margin:14px 0 0;line-height:1.5;">
+            Descarga el informe técnico PDF directamente desde el dashboard.<br>
+            Incluye SHA-256 verificable para uso en proceso sancionatorio (Ley 1333/2009).
           </p>
-          <p style="font-family:monospace;font-size:10px;color:#6A5A40;text-align:center;margin:8px 0 0;">
-            Freddy Hg · freddy-hg.vercel.app ·
-            <a href="https://github.com/ByZocar/Freddy-Hg" style="color:#6A5A40;">código abierto Apache 2.0</a>
+        </td>
+      </tr>
+
+      <!-- METADATOS DE LA ALERTA -->
+      <tr>
+        <td style="padding:8px 28px 20px;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#0F0C06;border-radius:6px;">
+            <tr>
+              <td style="padding:10px 14px;">
+                <span style="font-family:monospace;font-size:10px;color:#6A5A40;text-transform:uppercase;letter-spacing:0.06em;">ID de alerta:</span>
+                <span style="font-family:monospace;font-size:11px;color:#C8860A;">ALERT-{alert_id_short}</span>
+                <span style="float:right;font-family:monospace;font-size:10px;color:#6A5A40;">Sentinel-1 SAR · GEE</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 14px 10px;border-top:0.5px solid rgba(200,134,10,0.08);padding-top:8px;">
+                <span style="font-family:monospace;font-size:10px;color:#6A5A40;text-transform:uppercase;letter-spacing:0.06em;">Verificación:</span>
+                <span style="font-family:monospace;font-size:10px;color:#A89878;word-break:break-all;">{sha_short}</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <!-- FOOTER -->
+      <tr>
+        <td style="padding:18px 28px 24px;background:#0F0C06;border-top:0.5px solid rgba(200,134,10,0.08);">
+          <p style="font-family:'IBM Plex Sans',Arial,sans-serif;font-size:11px;color:#6A5A40;margin:0 0 8px;line-height:1.6;">
+            <strong style="color:#A89878;">Freddy Hg</strong> es un sistema de alerta temprana satelital
+            para detectar minería ilegal de oro y riesgo de contaminación por mercurio en la Amazonía colombiana.
+            Datos satelitales provenientes de la misión <em>Sentinel-1</em> (ESA / Copernicus),
+            cruzados con el catastro minero de la <em>Agencia Nacional de Minería</em> y los polígonos de
+            <em>RAISG</em>. Enriquecimiento contextual por <em>Mistral AI</em>.
+          </p>
+          <p style="font-family:'IBM Plex Sans',Arial,sans-serif;font-size:10px;color:#6A5A40;margin:0;line-height:1.6;">
+            Para responder o coordinar acciones, escribe directamente a este correo.<br>
+            Código fuente abierto:
+            <a href="https://github.com/ByZocar/Freddy-Hg" style="color:#A89878;text-decoration:underline;">github.com/ByZocar/Freddy-Hg</a>
+            ·
+            <a href="{landing_url}" style="color:#A89878;text-decoration:underline;">freddy-hg.vercel.app</a>
+            ·
+            Licencia Apache 2.0
+          </p>
+          <p style="font-family:'IBM Plex Sans',Arial,sans-serif;font-size:10px;color:#4A3C28;margin:10px 0 0;">
+            Si recibiste este correo por error o no eres el destinatario previsto,
+            por favor escribe al equipo y elimínalo.
           </p>
         </td>
       </tr>
@@ -327,9 +389,15 @@ def send_alert_email(
         "subject": subject,
         "html": body_html,
         "text": body_text,
+        "tags": [
+            {"name": "type", "value": "alert"},
+            {"name": "confidence", "value": str(alert.get("confidence_level", 1))},
+        ],
     }
     if ALERT_EMAIL_BCC:
         payload["bcc"] = [ALERT_EMAIL_BCC]
+    if ALERT_EMAIL_REPLY_TO:
+        payload["reply_to"] = [ALERT_EMAIL_REPLY_TO]
 
     try:
         resp = requests.post(

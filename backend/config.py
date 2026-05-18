@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = ""
     ALERT_EMAIL_FROM: str = "Freddy Hg <onboarding@resend.dev>"
     ALERT_EMAIL_BCC: str = ""
+    # Email al que se envían las respuestas del funcionario CAR.
+    # Si está vacío, las respuestas van al `from` (puede no ser monitoreable).
+    ALERT_EMAIL_REPLY_TO: str = ""
 
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE),
