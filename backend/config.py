@@ -50,6 +50,16 @@ class Settings(BaseSettings):
     # Postgres directo (para aplicar schema; opcional)
     POSTGRES_PASSWORD: Optional[str] = None
 
+    # SMTP — email al funcionario CAR (F-11)
+    # Configurar con Gmail (app password) o cualquier proveedor SMTP.
+    # Si no se configura, el email se omite silenciosamente (graceful degradation).
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    ALERT_EMAIL_FROM: str = ""
+    ALERT_EMAIL_BCC: str = ""
+
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE),
         env_file_encoding="utf-8",

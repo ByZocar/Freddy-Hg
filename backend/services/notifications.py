@@ -104,7 +104,12 @@ def _send_via_twilio(
 
 
 def dispatch_alert_notifications(alert_record: dict[str, Any]) -> dict[str, Any]:
-    """Tarea de background: envía alertas a los destinatarios afectados.
+    """Tarea de background: envía alertas a todos los canales configurados.
+
+    Canales:
+      1. Email al funcionario CAR (F-11) — vía SMTP si está configurado.
+      2. WhatsApp/SMS al guardián indígena (F-18) — vía Twilio sandbox.
+      3. Audit log en Supabase.
 
     Por simplicidad en el MVP usamos el TEST_WHATSAPP_NUMBER si está
     configurado. En producción la lógica recorre la tabla `recipients`
@@ -115,10 +120,19 @@ def dispatch_alert_notifications(alert_record: dict[str, Any]) -> dict[str, Any]
         - El cuerpo del mensaje sí se logea — no contiene PII más allá del
           enlace público a la alerta.
     """
+    # ── Canal 1: Email al funcionario CAR (F-11) ──────────────────
+    from .email_service import notify_car_organizations  # local para evitar circular
+    dashboard_url = f"{settings.FRONTEND_URL}/dashboard"
+    email_results = notify_car_organizations(alert_record, dashboard_url)
+    email_sent = sum(1 for r in email_results if r.get("sent"))
+    if email_sent:
+        logger.info("Email dispatched to %d CAR organizations", email_sent)
+
+    # ── Canal 2: WhatsApp/SMS al guardián (F-18) ──────────────────
     twilio = _get_twilio_client()
     if twilio is None:
-        logger.info("Twilio not configured; skipping notifications")
-        return {"sent": 0, "skipped": True}
+        logger.info("Twilio not configured; skipping WhatsApp notifications")
+        return {"sent": email_sent, "email_results": email_results}
 
     river_name = alert_record.get("river_name") or "Amazonas"
     # El link va siempre a la mini-web del guardian en el backend (HTML
@@ -169,4 +183,8 @@ def dispatch_alert_notifications(alert_record: dict[str, Any]) -> dict[str, Any]
     except Exception as exc:  # noqa: BLE001
         logger.warning("Audit log insert failed: %s", exc)
 
-    return {"sent": len(sent), "results": sent}
+    return {
+        "sent": len(sent) + email_sent,
+        "whatsapp_results": sent,
+        "email_results": email_results,
+    }
