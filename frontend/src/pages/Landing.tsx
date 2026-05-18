@@ -523,8 +523,10 @@ export default function Landing() {
             <div className="access-card__price access-card__price--free">Gratis</div>
             <div className="access-card__title">Portal público</div>
             <p className="access-card__body">
-              Acceso al mapa de alertas con 30 días de retraso. Descarga de
-              GeoJSON y CSV con licencia CC BY 4.0. Citable en reportajes.
+              Acceso al mapa de alertas con latencia tier (48 h críticas ·
+              7 días advertencias · 30 días monitor) y publicación inmediata
+              en territorios bajo sentencia T-106/25 y T-622/16. Descarga
+              GeoJSON y CSV con licencia CC BY 4.0.
             </p>
             <ul className="access-card__list">
               <li><IconCheck size={14} stroke={2} /> Mapa público de alertas</li>
@@ -723,6 +725,7 @@ export default function Landing() {
                 </a>
               </li>
               <li><Link to="/docs/accuracy">Precisión &amp; falsos positivos</Link></li>
+              <li><Link to="/docs/public-policy">Política de transparencia</Link></li>
               <li><a href="#problema">Investigación</a></li>
             </ul>
           </div>

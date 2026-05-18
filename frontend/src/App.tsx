@@ -14,6 +14,7 @@ import AdminPanel from './pages/Admin';
 import PublicView from './pages/Public';
 import Settings from './pages/Settings';
 import Accuracy from './pages/docs/Accuracy';
+import PublicPolicy from './pages/docs/PublicPolicy';
 
 function AppLoading() {
   return (
@@ -38,6 +39,7 @@ export default function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/public" element={<PublicView />} />
         <Route path="/docs/accuracy" element={<Accuracy />} />
+        <Route path="/docs/public-policy" element={<PublicPolicy />} />
         <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
 
         {/* Privadas */}

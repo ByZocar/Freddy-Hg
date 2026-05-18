@@ -2,13 +2,12 @@
  * ☿ FREDDY Hg — Portal Público
  * Spec: FRONTEND_SPEC_COMPLETO.md § Pantalla 6.
  *
- * Sin login. Datos con 30 días de retraso (filtrado client-side mientras
- * el backend no exponga /api/public/alerts).
+ * Sin login. La latencia publica se aplica server-side via la vista
+ * `public_alerts` (ver sql/005_public_alerts_tiered_latency.sql).
  * Mapa arriba (50vh), tabla abajo (50vh) con descargas GeoJSON/CSV.
  */
-import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { IconMapPin2, IconTableExport } from '@tabler/icons-react';
+import { IconMapPin2, IconTableExport, IconScale } from '@tabler/icons-react';
 import Wordmark from '../components/brand/Wordmark';
 import { Button } from '../components/ui/Button';
 import { Badge, LevelBadge } from '../components/ui/Badge';
@@ -32,14 +31,9 @@ const PUBLIC_LAYERS = {
 };
 
 export default function PublicView() {
-  const { alerts: allAlerts, loading } = useAlerts({ confidenceMin: 1 });
-
-  // Aplicar retraso de 30 días (solo client-side por ahora)
-  const publicAlerts = useMemo(() => {
-    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    return allAlerts.filter((a) => new Date(a.created_at).getTime() <= cutoff || true);
-    // NOTE: para el demo dejamos pasar todas; en producción real, solo las anteriores al cutoff.
-  }, [allAlerts]);
+  // La latencia se aplica server-side (vista `public_alerts` + RLS anon).
+  // Aqui sólo mostramos lo que el servidor devuelve.
+  const { alerts: publicAlerts, loading } = useAlerts({ confidenceMin: 1 });
 
   return (
     <div className="public-shell">
@@ -48,7 +42,21 @@ export default function PublicView() {
           <Wordmark variant="navbar" />
         </Link>
         <div className="public-navbar__tag">
-          Datos públicos · 30 días de retraso
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <IconScale size={14} stroke={1.5} />
+            Latencia tier · 48h / 7d / 30d · override por sentencia
+          </span>
+          <Link
+            to="/docs/public-policy"
+            style={{
+              marginLeft: 12,
+              color: 'var(--color-brand-gold)',
+              textDecoration: 'none',
+              fontSize: 'var(--fs-mono)',
+            }}
+          >
+            Ver política →
+          </Link>
         </div>
         <div className="public-navbar__right">
           <span style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-mono)', color: 'var(--text-muted)' }}>

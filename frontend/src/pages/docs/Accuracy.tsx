@@ -34,6 +34,9 @@ export default function Accuracy() {
           <Link to="/public" style={{ textDecoration: 'none', color: 'var(--text-secondary)', fontSize: 'var(--fs-body)' }}>
             Portal público
           </Link>
+          <Link to="/docs/public-policy" style={{ textDecoration: 'none', color: 'var(--text-secondary)', fontSize: 'var(--fs-body)' }}>
+            Transparencia
+          </Link>
           <Link to="/login" style={{ textDecoration: 'none' }}>
             <Button variant="ghost" size="sm">Iniciar sesión</Button>
           </Link>

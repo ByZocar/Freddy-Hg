@@ -24,6 +24,7 @@ SQL_FILES_ORDERED = (
     "002_alert_id_short.sql",
     "003_recipients_phone_last4.sql",
     "004_seed_demo_alerts.sql",
+    "005_public_alerts_tiered_latency.sql",
 )
 
 
