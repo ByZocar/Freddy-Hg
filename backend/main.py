@@ -89,3 +89,35 @@ def root() -> dict:
 @app.get("/health")
 def health_check() -> dict:
     return {"status": "ok", "service": "freddy-hg-backend"}
+
+
+@app.post("/_debug/email-test", include_in_schema=False)
+def debug_email_test(to: str, authorization: str | None = None):
+    """Endpoint TEMPORAL para diagnosticar configuracion SMTP.
+    Borrar despues del debugging del piloto.
+    """
+    from fastapi import HTTPException, Header  # noqa: F401
+    import os
+    smtp_status = {
+        "SMTP_HOST": os.environ.get("SMTP_HOST", "<empty>"),
+        "SMTP_PORT": os.environ.get("SMTP_PORT", "<empty>"),
+        "SMTP_USER": os.environ.get("SMTP_USER", "<empty>")[:5] + "..." if os.environ.get("SMTP_USER") else "<empty>",
+        "SMTP_PASSWORD_set": bool(os.environ.get("SMTP_PASSWORD")),
+        "ALERT_EMAIL_FROM": os.environ.get("ALERT_EMAIL_FROM", "<empty>"),
+    }
+    from .services.email_service import send_alert_email
+    fake_alert = {
+        "id": "debug-test-0001",
+        "centroid_lat": -0.1234,
+        "centroid_lon": -72.4567,
+        "confidence_level": 2,
+        "legal_status": "ilegal_presunto",
+        "indigenous_territory": None,
+        "scene_date_utc": "2026-05-18T00:00:00Z",
+        "sha256_evidence": "debugtest0000000000000000000000000000000000000000000000000000",
+        "mistral_context": "Prueba de configuracion SMTP — si llega este email, el sistema funciona.",
+        "impact_metrics": {"mercury_kg": 500, "damage_usd": 1500000, "people_at_risk": 300},
+        "alert_url": f"{settings.FRONTEND_URL}/alert/debug-test",
+    }
+    result = send_alert_email(to, fake_alert, f"{settings.FRONTEND_URL}/dashboard")
+    return {"smtp_config": smtp_status, "result": result}
