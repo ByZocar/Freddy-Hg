@@ -722,6 +722,7 @@ export default function Landing() {
                   API Docs
                 </a>
               </li>
+              <li><Link to="/docs/accuracy">Precisión &amp; falsos positivos</Link></li>
               <li><a href="#problema">Investigación</a></li>
             </ul>
           </div>

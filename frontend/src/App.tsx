@@ -13,6 +13,7 @@ import AlertDetail from './pages/AlertDetail';
 import AdminPanel from './pages/Admin';
 import PublicView from './pages/Public';
 import Settings from './pages/Settings';
+import Accuracy from './pages/docs/Accuracy';
 
 function AppLoading() {
   return (
@@ -36,6 +37,7 @@ export default function App() {
         {/* Públicas */}
         <Route path="/" element={<Landing />} />
         <Route path="/public" element={<PublicView />} />
+        <Route path="/docs/accuracy" element={<Accuracy />} />
         <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
 
         {/* Privadas */}
