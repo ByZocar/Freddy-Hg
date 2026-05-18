@@ -19,7 +19,7 @@ import logging
 import math
 from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Query
 from fastapi.responses import HTMLResponse
 
 from ..database import supabase_client
@@ -27,6 +27,63 @@ from ..database import supabase_client
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def _fetch_alert_by_key(alert_id: str) -> Optional[dict[str, Any]]:
+    """Obtiene la alerta por UUID completo o por prefijo de 8 hex (link WhatsApp).
+
+    PostgREST no aplica ``ilike`` de forma fiable sobre columnas ``UUID``.
+    Preferimos ``id_short`` si existe (`sql/002_alert_id_short.sql`). Sin esa
+    migración, escaneo acotado de alertas recientes (pilotos con pocas filas).
+    """
+    key = alert_id.strip()
+    if len(key) >= 32:
+        try:
+            resp = supabase_client.table("alerts").select("*").eq("id", key).limit(1).execute()
+            if resp.data:
+                return resp.data[0]
+        except Exception:  # noqa: BLE001
+            logger.exception("Failed exact UUID lookup for guardian page")
+        return None
+
+    fragment = "".join(ch for ch in key.lower() if ch in "0123456789abcdef")[:8]
+    if len(fragment) != 8:
+        return None
+
+    try:
+        resp = (
+            supabase_client.table("alerts")
+            .select("*")
+            .eq("id_short", fragment)
+            .limit(1)
+            .execute()
+        )
+        if resp.data:
+            return resp.data[0]
+        return None
+    except Exception:  # noqa: BLE001
+        logger.warning(
+            "id_short lookup unavailable (%s) — fallback scan recent alerts",
+            fragment,
+            exc_info=True,
+        )
+
+    try:
+        scan = (
+            supabase_client.table("alerts")
+            .select("*")
+            .order("created_at", desc=True)
+            .limit(800)
+            .execute()
+        )
+        for row in scan.data or []:
+            rid = str(row.get("id") or "")
+            head = "".join(ch for ch in rid.split("-")[0].lower() if ch in "0123456789abcdef")[:8]
+            if head == fragment:
+                return row
+    except Exception:  # noqa: BLE001
+        logger.exception("Fallback scan failed for guardian page")
+    return None
 
 
 # ─── Helpers de presentacion ──────────────────────────────────────
@@ -78,7 +135,8 @@ def _infer_river(lat: float, lon: float) -> str:
 
 
 def _short_id(full_id: str) -> str:
-    return full_id.split("-")[0][:8].upper() if full_id else "????????"
+    """Primer octeto del UUID (como en el link de WhatsApp), minúsculas."""
+    return (full_id.split("-")[0][:8] if full_id else "????????").lower()
 
 
 def _format_utc(iso: Optional[str]) -> str:
@@ -149,28 +207,64 @@ def guardian_alert_page(alert_id: str, lang: str = Query(default="es", regex="^(
         https://freddy-hg-backend-production.up.railway.app/a/{first_8_chars}
     Por eso el endpoint acepta tanto el UUID completo como un prefijo.
     """
-    # Si llega solo el prefijo, hacemos lookup por LIKE
-    alert: Optional[dict[str, Any]] = None
-    try:
-        if len(alert_id) >= 32:  # UUID completo
-            resp = supabase_client.table("alerts").select("*").eq("id", alert_id).limit(1).execute()
-        else:
-            resp = (
-                supabase_client.table("alerts")
-                .select("*")
-                .ilike("id", f"{alert_id.lower()}%")
-                .limit(1)
-                .execute()
-            )
-        if resp.data:
-            alert = resp.data[0]
-    except Exception:  # noqa: BLE001
-        logger.exception("Failed to load alert for guardian page")
+    alert = _fetch_alert_by_key(alert_id)
 
     if not alert:
-        raise HTTPException(status_code=404, detail="Alerta no encontrada")
+        return HTMLResponse(_render_not_found_html(alert_id), status_code=404)
 
     return HTMLResponse(_render_html(alert))
+
+
+def _render_not_found_html(alert_id: str) -> str:
+    """Página 404 amable para el guardián cuando el ID no existe.
+
+    Razones probables: la base se reinició / la alerta es de un sandbox /
+    el link se truncó en WhatsApp. Mostramos una pista útil en lugar
+    de un JSON `detail`.
+    """
+    safe_id = html.escape((alert_id or "")[:32])
+    return f"""<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alerta no encontrada · Freddy Hg</title>
+<style>
+  *{{box-sizing:border-box;margin:0;padding:0}}
+  body{{background:#1A1208;color:#F2EDD8;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+       font-size:15px;line-height:1.5;min-height:100vh;padding:24px 16px}}
+  .brand{{color:#C8860A;font-weight:800;letter-spacing:-.01em;text-transform:uppercase}}
+  .card{{background:#241A0C;border:.5px solid rgba(200,134,10,.20);border-radius:12px;
+         padding:22px;margin:24px auto 0;max-width:460px}}
+  h1{{font-size:22px;color:#F0A060;margin-bottom:8px;font-weight:800;letter-spacing:-.01em}}
+  p{{color:#A89878;margin:10px 0;font-size:14px;line-height:1.55}}
+  code{{background:#3A2A14;color:#C8860A;padding:2px 6px;border-radius:4px;
+        font-family:'Courier New',monospace;font-size:12px}}
+  ul{{margin:10px 0 0 18px;color:#A89878;font-size:13.5px;line-height:1.65}}
+  footer{{margin-top:28px;text-align:center;color:#6A5A40;font-size:11px;
+          font-family:'Courier New',monospace}}
+  a{{color:#A89878}}
+</style>
+</head>
+<body>
+  <div class="brand">FREDDY <span style="color:#A0A0A0;font-weight:400">Hg</span></div>
+  <div class="card">
+    <h1>Alerta no encontrada</h1>
+    <p>El identificador <code>{safe_id or "—"}</code> no corresponde a ninguna alerta en la base actual.</p>
+    <p>Posibles causas:</p>
+    <ul>
+      <li>El registro fue purgado (base reiniciada o entorno de pruebas).</li>
+      <li>El enlace se truncó al copiarlo de WhatsApp.</li>
+      <li>El identificador pertenece a otra instalación de Freddy Hg.</li>
+    </ul>
+    <p>Si tienes una alerta reciente, vuelve a abrir el enlace recibido por WhatsApp o pide al equipo que reenvíe el mensaje.</p>
+  </div>
+  <footer>
+    Freddy Hg · Sistema de Alerta Satelital<br>
+    <a href="/">freddy-hg-backend</a>
+  </footer>
+</body>
+</html>"""
 
 
 def _render_html(alert: dict[str, Any]) -> str:

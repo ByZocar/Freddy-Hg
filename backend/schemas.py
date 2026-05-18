@@ -66,6 +66,16 @@ class OrganizationIn(BaseModel):
 
 
 class RecipientIn(BaseModel):
-    organization_id: str
-    phone_number: str  # se hashea inmediatamente; nunca se almacena en claro
-    basin_ids: list[str] = []
+    """Alta de un destinatario WhatsApp/SMS.
+
+    Acepta tanto los nombres canónicos (`phone_number`, `basin_ids`,
+    `organization_id`) como los alias usados por el frontend antiguo
+    (`phone`, `basins`, sin org → se asigna a la organización por defecto).
+    """
+
+    phone_number: Optional[str] = Field(default=None, alias="phone")
+    organization_id: Optional[str] = None
+    basin_ids: list[str] = Field(default_factory=list, alias="basins")
+    role: Optional[str] = None
+
+    model_config = {"populate_by_name": True, "extra": "ignore"}

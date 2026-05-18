@@ -2,18 +2,18 @@
  * ☿ FREDDY Hg — Admin: gestión de destinatarios
  * Spec: FRONTEND_SPEC_COMPLETO.md § Pantalla 8.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { IconAlertTriangle, IconShieldLock, IconPlus, IconTrash } from '@tabler/icons-react';
 import Navbar from '../components/layout/Navbar';
 import { Card, SectionLabel } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { LabeledInput, Field, Input } from '../components/ui/Input';
+import { LabeledInput, Field } from '../components/ui/Input';
 import { Badge } from '../components/ui/Badge';
 import { AlertBox } from '../components/ui/AlertBox';
 import { useAuth } from '../hooks/useAuth';
 import { useAlerts } from '../hooks/useAlerts';
 import { useToast } from '../hooks/useToast';
-import { addRecipient, removeRecipient } from '../lib/api';
+import { addRecipient, listRecipients, removeRecipient, type RecipientRow } from '../lib/api';
 import { formatRelative } from '../lib/format';
 
 interface Recipient {
@@ -24,23 +24,15 @@ interface Recipient {
   last_alert_at: string | null;
 }
 
-// Mock inicial (se reemplazará con GET /api/recipients)
-const MOCK_RECIPIENTS: Recipient[] = [
-  {
-    id: 'r1',
-    phone_last4: '4567',
-    role: 'Guardia Territorio Caquetá',
-    basins: ['Río Caquetá'],
-    last_alert_at: new Date(Date.now() - 1000 * 60 * 60 * 36).toISOString(),
-  },
-  {
-    id: 'r2',
-    phone_last4: '8821',
-    role: 'Coordinador OPIAC',
-    basins: ['Río Caquetá', 'Río Apaporis'],
+function mapRow(row: RecipientRow): Recipient {
+  return {
+    id: row.id,
+    phone_last4: row.phone_last4 || (row.phone_number_hash || '').slice(-4),
+    role: row.role,
+    basins: Array.isArray(row.basin_ids) ? row.basin_ids : [],
     last_alert_at: null,
-  },
-];
+  };
+}
 
 const BASIN_OPTIONS = [
   { value: 'caqueta', label: 'Río Caquetá · Amazonas' },
@@ -54,12 +46,30 @@ export default function AdminPanel() {
   const { alerts } = useAlerts({ confidenceMin: 1 });
   const toast = useToast();
 
-  const [recipients, setRecipients] = useState<Recipient[]>(MOCK_RECIPIENTS);
+  const [recipients, setRecipients] = useState<Recipient[]>([]);
+  const [loadingList, setLoadingList] = useState(true);
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState('');
   const [basin, setBasin] = useState<string>('caqueta');
   const [submitting, setSubmitting] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  const refresh = async () => {
+    setLoadingList(true);
+    try {
+      const rows = await listRecipients();
+      setRecipients(rows.filter((r) => r.active !== false).map(mapRow));
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setLoadingList(false);
+    }
+  };
+
+  useEffect(() => {
+    void refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -69,17 +79,12 @@ export default function AdminPanel() {
     }
     setSubmitting(true);
     try {
-      await addRecipient({ phone, role, basins: [basin] });
-      setRecipients((prev) => [
-        ...prev,
-        {
-          id: `r${prev.length + 1}`,
-          phone_last4: phone.slice(-4),
-          role: role || null,
-          basins: [BASIN_OPTIONS.find((b) => b.value === basin)?.label ?? basin],
-          last_alert_at: null,
-        },
-      ]);
+      const created = await addRecipient({ phone, role, basins: [basin] });
+      if (created) {
+        setRecipients((prev) => [mapRow(created), ...prev]);
+      } else {
+        await refresh();
+      }
       setPhone('');
       setRole('');
       toast.success('Destinatario añadido');
@@ -166,11 +171,14 @@ export default function AdminPanel() {
           </section>
 
           <section className="admin-section">
-            <SectionLabel>Destinatarios activos · {recipients.length}</SectionLabel>
+            <SectionLabel>
+              Destinatarios activos · {recipients.length}
+              {loadingList ? ' · cargando…' : ''}
+            </SectionLabel>
             {recipients.length === 0 ? (
               <Card size="md" style={{ marginTop: 'var(--space-2)' }}>
                 <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 'var(--space-4) 0' }}>
-                  Sin destinatarios registrados.
+                  {loadingList ? 'Cargando destinatarios…' : 'Sin destinatarios registrados.'}
                 </div>
               </Card>
             ) : (

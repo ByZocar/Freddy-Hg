@@ -53,7 +53,7 @@ export default function Dashboard() {
   const { alerts: allAlerts, loading, error } = useAlerts({ confidenceMin: 1 });
   const [search, setSearch] = useState('');
   const [levelFilter, setLevelFilter] = useState<LevelFilter>('all');
-  const [dateRange, setDateRange] = useState<DateRange>('30d');
+  const [dateRange, setDateRange] = useState<DateRange>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [layers, setLayers] = useState<LayerToggles>(DEFAULT_LAYERS);
   const [stateById, setStateById] = useState<Record<string, string>>({});

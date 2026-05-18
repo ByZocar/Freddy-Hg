@@ -41,7 +41,7 @@ def build_guardian_url(alert_id: str) -> str:
     para minimizar bytes (NF-02: funciona con 2G).
     Usa los primeros 8 chars del UUID para ahorrar caracteres en WhatsApp.
     """
-    short_id = alert_id.split("-")[0][:8] if alert_id else "????????"
+    short_id = (alert_id.split("-")[0][:8] if alert_id else "????????").lower()
     base = settings.BACKEND_URL.rstrip("/")
     return f"{base}/a/{short_id}"
 

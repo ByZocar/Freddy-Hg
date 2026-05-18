@@ -18,7 +18,13 @@ import psycopg2
 from backend.config import settings
 
 
-SQL_FILE = Path(__file__).resolve().parent.parent / "sql" / "001_initial_schema.sql"
+SQL_DIR = Path(__file__).resolve().parent.parent / "sql"
+SQL_FILES_ORDERED = (
+    "001_initial_schema.sql",
+    "002_alert_id_short.sql",
+    "003_recipients_phone_last4.sql",
+    "004_seed_demo_alerts.sql",
+)
 
 
 def _build_connection_string() -> str:
@@ -41,15 +47,25 @@ def _build_connection_string() -> str:
 
 
 def main() -> int:
-    sql = SQL_FILE.read_text(encoding="utf-8")
-    print(f"📄 Schema cargado: {SQL_FILE} ({len(sql)} chars)")
+    snippets: list[tuple[str, str]] = []
+    for name in SQL_FILES_ORDERED:
+        path = SQL_DIR / name
+        if not path.exists():
+            continue
+        snippets.append((name, path.read_text(encoding="utf-8")))
+    if not snippets:
+        print(f"⚠️  No hay archivos SQL en {SQL_DIR}")
+        return 2
+
+    total = sum(len(txt) for _, txt in snippets)
+    print(f"📄 Scripts SQL ({len(snippets)} archivo(s), {total} chars total):")
 
     try:
         conn_str = _build_connection_string()
     except RuntimeError as exc:
         print(f"\n⚠️  {exc}\n")
         print("Como alternativa, abre Supabase Dashboard -> SQL Editor -> New query,")
-        print("pega el contenido del archivo backend/sql/001_initial_schema.sql y ejecuta.")
+        print("pega los archivos de backend/sql/ en orden (002 despues de 001) y ejecuta.")
         return 2
 
     print("🔌 Conectando a Supabase Postgres...")
@@ -57,7 +73,9 @@ def main() -> int:
         with psycopg2.connect(conn_str) as conn:
             conn.autocommit = True
             with conn.cursor() as cur:
-                cur.execute(sql)
+                for fname, sql in snippets:
+                    print(f"  ▶ {fname}")
+                    cur.execute(sql)
             print("✅ Schema aplicado con exito.")
             with conn.cursor() as cur:
                 cur.execute(
