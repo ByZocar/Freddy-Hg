@@ -57,6 +57,57 @@ def list_alerts(
     return {"count": len(resp.data or []), "alerts": resp.data or []}
 
 
+# IMPORTANTE: las rutas estaticas /alerts/export/* deben ir ANTES que
+# /alerts/{alert_id}, si no FastAPI matchea "export" como alert_id.
+@router.get("/alerts/export/geojson")
+def export_geojson(
+    confidence_min: int = Query(default=1, ge=1, le=3),
+    days: int = Query(default=365, ge=1, le=1825),
+) -> Response:
+    """Exporta alertas filtradas como GeoJSON descargable (F-24)."""
+    rows = (
+        supabase_client.table("alerts")
+        .select("*")
+        .gte("confidence_level", confidence_min)
+        .order("created_at", desc=True)
+        .limit(5000)
+        .execute()
+    ).data or []
+    # centroid_geom es PostGIS y rompe json.dumps; lo dejamos fuera explicito
+    geojson = _serialize_alerts_to_geojson(rows)
+    body = json.dumps(geojson, ensure_ascii=False, default=str).encode("utf-8")
+    filename = f"freddy-hg-alerts-{datetime.utcnow().strftime('%Y%m%d')}.geojson"
+    return Response(
+        content=body,
+        media_type="application/geo+json",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/alerts/export/csv")
+def export_csv(confidence_min: int = Query(default=1, ge=1, le=3)) -> Response:
+    """Exporta alertas como CSV descargable (F-24)."""
+    rows = (
+        supabase_client.table("alerts")
+        .select("id, created_at, scene_date_utc, centroid_lat, centroid_lon, confidence_level, legal_status, indigenous_territory, indigenous_nation, area_m2, sha256_evidence")
+        .gte("confidence_level", confidence_min)
+        .order("created_at", desc=True)
+        .limit(5000)
+        .execute()
+    ).data or []
+    output = io.StringIO()
+    if rows:
+        writer = csv.DictWriter(output, fieldnames=list(rows[0].keys()))
+        writer.writeheader()
+        writer.writerows(rows)
+    filename = f"freddy-hg-alerts-{datetime.utcnow().strftime('%Y%m%d')}.csv"
+    return Response(
+        content=output.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.get("/alerts/{alert_id}")
 def get_alert(alert_id: str) -> dict[str, Any]:
     """Detalle completo de una alerta."""
@@ -98,54 +149,6 @@ def alert_history(alert_id: str, radius_km: float = Query(default=2.0, ge=0.1, l
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=500, detail=f"History query failed: {exc}") from exc
     return {"count": len(rows), "alerts": rows}
-
-
-@router.get("/alerts/export/geojson")
-def export_geojson(
-    confidence_min: int = Query(default=1, ge=1, le=3),
-    days: int = Query(default=365, ge=1, le=1825),
-) -> Response:
-    """Exporta alertas filtradas como GeoJSON descargable (F-24)."""
-    rows = (
-        supabase_client.table("alerts")
-        .select("*")
-        .gte("confidence_level", confidence_min)
-        .order("created_at", desc=True)
-        .limit(5000)
-        .execute()
-    ).data or []
-    geojson = _serialize_alerts_to_geojson(rows)
-    body = json.dumps(geojson, ensure_ascii=False, default=str).encode("utf-8")
-    filename = f"freddy-hg-alerts-{datetime.utcnow().strftime('%Y%m%d')}.geojson"
-    return Response(
-        content=body,
-        media_type="application/geo+json",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
-
-
-@router.get("/alerts/export/csv")
-def export_csv(confidence_min: int = Query(default=1, ge=1, le=3)) -> Response:
-    """Exporta alertas como CSV descargable (F-24)."""
-    rows = (
-        supabase_client.table("alerts")
-        .select("id, created_at, scene_date_utc, centroid_lat, centroid_lon, confidence_level, legal_status, indigenous_territory, indigenous_nation, area_m2, sha256_evidence")
-        .gte("confidence_level", confidence_min)
-        .order("created_at", desc=True)
-        .limit(5000)
-        .execute()
-    ).data or []
-    output = io.StringIO()
-    if rows:
-        writer = csv.DictWriter(output, fieldnames=list(rows[0].keys()))
-        writer.writeheader()
-        writer.writerows(rows)
-    filename = f"freddy-hg-alerts-{datetime.utcnow().strftime('%Y%m%d')}.csv"
-    return Response(
-        content=output.getvalue(),
-        media_type="text/csv",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
 
 
 @router.get("/public/alerts")

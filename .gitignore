@@ -69,3 +69,6 @@ backend/logs/
 !06_pruebas/**/README.md
 !06_pruebas/**/.gitkeep
 frontend/tsconfig.tsbuildinfo
+
+# Mensajes de commit temporales (para agentes sobre Windows/PowerShell)
+.git_commit_msg.txt
