@@ -7,7 +7,7 @@
  * Mapa arriba (50vh), tabla abajo (50vh) con descargas GeoJSON/CSV.
  */
 import { Link } from 'react-router-dom';
-import { IconMapPin2, IconTableExport, IconScale } from '@tabler/icons-react';
+import { IconMapPin2, IconTableExport, IconScale, IconExternalLink, IconSatellite } from '@tabler/icons-react';
 import Wordmark from '../components/brand/Wordmark';
 import { Button } from '../components/ui/Button';
 import { Badge, LevelBadge } from '../components/ui/Badge';
@@ -88,6 +88,11 @@ export default function PublicView() {
             </div>
           </div>
           <div className="public-feed__actions">
+            <a href="https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S1_GRD" target="_blank" rel="noreferrer" style={{ textDecoration: 'none', marginRight: 'var(--space-2)' }}>
+              <Button variant="ghost" size="sm" iconLeft={<IconSatellite size={14} stroke={1.5} />} iconRight={<IconExternalLink size={12} stroke={1.5} />}>
+                Fuente Satelital
+              </Button>
+            </a>
             <a href={publicExportUrl('geojson')} download style={{ textDecoration: 'none' }}>
               <Button variant="ghost" size="sm" iconLeft={<IconMapPin2 size={14} stroke={1.5} />}>
                 GeoJSON

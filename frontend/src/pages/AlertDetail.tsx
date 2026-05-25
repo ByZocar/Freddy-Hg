@@ -212,8 +212,16 @@ function AlertDetailBody({
         </div>
       </div>
       <div className="alert-detail__caption">
-        Imagen: Sentinel-1 SAR GRD · Polarización VV ·{' '}
-        <span style={{ wordBreak: 'break-all' }}>{alert.scene_id}</span>
+        Imagen:{' '}
+        <a 
+          href={`https://browser.dataspace.copernicus.eu/?zoom=14&lat=${alert.centroid_lat}&lng=${alert.centroid_lon}&themeId=DEFAULT-THEME`}
+          target="_blank"
+          rel="noreferrer"
+          style={{ color: 'var(--color-brand-gold)', textDecoration: 'none' }}
+        >
+          Sentinel-1 SAR GRD <IconExternalLink size={12} stroke={1.5} style={{ verticalAlign: 'middle' }} />
+        </a>
+        {' '}· Polarización VV · <span style={{ wordBreak: 'break-all' }}>{alert.scene_id}</span>
       </div>
 
       <section className="alert-detail__section">
