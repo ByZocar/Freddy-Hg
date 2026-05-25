@@ -141,7 +141,7 @@ def detect_mining_activity(roi_bounds: dict[str, float], roi_name: str) -> list[
     latest = s1_current.sort("system:time_start", False).first()
     scene_id = latest.get("system:id").getInfo()
     scene_date_ms = latest.get("system:time_start").getInfo()
-    scene_date = datetime.utcfromtimestamp(scene_date_ms / 1000).isoformat() + "Z"
+    scene_date = datetime.fromtimestamp(scene_date_ms / 1000, tz=timezone.utc).isoformat().replace("+00:00", "Z")
 
     alerts: list[dict[str, Any]] = []
     for feat in features:
@@ -220,7 +220,7 @@ def run_pipeline() -> dict[str, Any]:
     summary = {
         "total_alerts": total,
         "results": results,
-        "ran_at": datetime.utcnow().isoformat() + "Z",
+        "ran_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "version": "freddy-hg-v1.0",
     }
     logger.info("=== Pipeline complete: %d alertas enviadas ===", total)
@@ -229,7 +229,7 @@ def run_pipeline() -> dict[str, Any]:
     try:
         log_dir = Path(__file__).resolve().parent.parent / "06_pruebas" / "test_logs"
         log_dir.mkdir(parents=True, exist_ok=True)
-        log_path = log_dir / f"{datetime.utcnow().strftime('%Y-%m-%d_%H%M%S')}_run.json"
+        log_path = log_dir / f"{datetime.now(timezone.utc).strftime('%Y-%m-%d_%H%M%S')}_run.json"
         log_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
         logger.info("📝 Log guardado: %s", log_path)
     except Exception as exc:  # noqa: BLE001
